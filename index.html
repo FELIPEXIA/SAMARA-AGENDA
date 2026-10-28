@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Samara Agendamento | Nails & Sobrancelhas</title>
+  <meta name="description" content="Agendamento online exclusivo para Unhas de Gel, Banho de Gel, Pé e Mão, Henna e Sobrancelhas com Samara.">
+  
+  <!-- PWA & Mobile Web App Tags -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <meta name="theme-color" content="#0c0d12">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Samara Studio">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="app-wrapper">
+    
+    <!-- Top Header -->
+    <header class="app-header" id="app-header">
+      <div class="header-brand">
+        <div class="brand-avatar" id="brand-avatar">SA</div>
+        <div class="brand-info">
+          <span class="brand-tag">Studio de Beleza</span>
+          <h1 class="brand-title">Samara Agendamento</h1>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="install-pwa-btn" id="install-pwa-btn" style="display: none;" title="Instalar Aplicativo no Celular">
+          <span class="btn-icon">📲</span>
+          <span class="btn-text">Instalar App</span>
+        </button>
+        <div class="cloud-indicator" id="cloud-indicator" title="Status da Conexão">
+          <span class="cloud-dot"></span>
+          <span class="cloud-text">Supabase Conectado</span>
+        </div>
+        <button class="nav-view-btn" id="toggle-admin-btn" title="Acessar Painel da Samara">
+          <span class="btn-icon">⚡</span>
+          <span class="btn-text" id="view-mode-label">Painel Admin</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Banner de Boas-Vindas -->
+    <section class="hero-banner" id="hero-banner">
+      <div class="hero-content">
+        <div class="badge-status">
+          <span class="pulse-dot"></span>
+          Atendimento de Segunda a Sábado • 08:30 às 18:30
+        </div>
+        <div class="badge-location" style="margin-top: 8px; font-size: 13px; color: var(--primary-rose-light); opacity: 0.95;">
+          📍 Rua Nossa Senhora das Graças, Santo Antônio, Cariacica
+        </div>
+        <h2 class="hero-greeting">Reserve seu horário exclusivo</h2>
+        <p class="hero-subtitle">Escolha seu procedimento de Unhas ou Sobrancelhas, selecione o melhor horário disponível e garanta sua vaga. Pagamento presencial no Studio.</p>
+      </div>
+    </section>
+
+    <!-- VISÃO 1: FLUXO DE AGENDAMENTO (CLIENTE) -->
+    <main class="client-view active" id="client-view">
+      
+      <!-- Passo 1: Procedimentos Reais da Samara -->
+      <section class="section-card" id="services-section">
+        <div class="section-heading">
+          <div class="step-indicator">1</div>
+          <div>
+            <h2 class="section-title">Escolha o Procedimento</h2>
+            <p class="section-desc">Tabela oficial de procedimentos, durações e valores da Samara</p>
+          </div>
+        </div>
+
+        <!-- Barra de Busca Rápida Instantânea -->
+        <div class="search-bar-container">
+          <input type="text" id="service-search-input" class="search-input" placeholder="🔍 Buscar procedimento (ex: gel, pé, henna, banho, fibra...)" autocomplete="off">
+        </div>
+
+        <!-- Filtros de Categorias Reais -->
+        <div class="category-filters" id="category-filters">
+          <button class="filter-chip active" data-category="all" id="filter-all">Todos (24)</button>
+          <button class="filter-chip" data-category="gel" id="filter-gel">💎 Unhas de Gel</button>
+          <button class="filter-chip" data-category="combos" id="filter-combos">👑 Combos Especiais</button>
+          <button class="filter-chip" data-category="tradicional" id="filter-tradicional">🌸 Pé & Mão</button>
+          <button class="filter-chip" data-category="sobrancelhas" id="filter-sobrancelhas">✨ Sobrancelhas</button>
+        </div>
+
+        <!-- Grid de Serviços Reais -->
+        <div class="services-grid" id="services-grid">
+          <!-- Renderizado dinamicamente via app.js -->
+        </div>
+      </section>
+
+      <!-- Passo 2: Data e Horário Inteligente -->
+      <section class="section-card" id="datetime-section">
+        <div class="section-heading">
+          <div class="step-indicator">2</div>
+          <div>
+            <h2 class="section-title">Selecione o Dia e Horário</h2>
+            <p class="section-desc">Horários calculados automaticamente com base na duração do procedimento</p>
+          </div>
+        </div>
+
+        <div class="datetime-container">
+          <!-- Calendário -->
+          <div class="calendar-wrapper" id="calendar-wrapper">
+            <div class="calendar-header">
+              <button class="cal-nav-btn" id="prev-month-btn" aria-label="Mês anterior">‹</button>
+              <h3 class="cal-month-title" id="calendar-month-year">Carregando...</h3>
+              <button class="cal-nav-btn" id="next-month-btn" aria-label="Próximo mês">›</button>
+            </div>
+            <div class="calendar-weekdays">
+              <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span>
+            </div>
+            <div class="calendar-days-grid" id="calendar-days">
+              <!-- Dias gerados pelo app.js -->
+            </div>
+            <p class="cal-legend"><span>Seg - Sáb: 08:30 às 18:30</span> • <span>Domingo: Folga</span></p>
+          </div>
+
+          <!-- Slots de Horários -->
+          <div class="slots-wrapper" id="slots-wrapper">
+            <h3 class="slots-title" id="selected-date-display">Selecione um dia no calendário</h3>
+            <div class="slots-grid" id="slots-grid">
+              <!-- Horários do dia -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Passo 3: Dados e Confirmação -->
+      <section class="section-card" id="checkout-section">
+        <div class="section-heading">
+          <div class="step-indicator">3</div>
+          <div>
+            <h2 class="section-title">Seus Dados e Confirmação</h2>
+            <p class="section-desc">Sem pagamento antecipado obrigatório. Pagamento presencial no Studio.</p>
+          </div>
+        </div>
+
+        <div class="checkout-layout">
+          <form class="client-form" id="booking-form" onsubmit="event.preventDefault();">
+            <div class="input-group">
+              <label for="client-name">Seu Nome Completo *</label>
+              <input type="text" id="client-name" placeholder="Ex: Maria Clara" required autocomplete="name">
+            </div>
+
+            <div class="input-group">
+              <label for="client-phone">Seu WhatsApp com DDD *</label>
+              <input type="tel" id="client-phone" placeholder="(11) 98765-4321" required autocomplete="tel">
+            </div>
+
+            <div class="input-group">
+              <label for="client-notes">Observações especiais (opcional)</label>
+              <textarea id="client-notes" rows="2" placeholder="Ex: Já possuo unha de gel de outro studio, cutícula fina..."></textarea>
+            </div>
+          </form>
+
+          <!-- Resumo em Tempo Real -->
+          <div class="summary-card" id="booking-summary-card">
+            <h3 class="summary-title">Resumo do Horário</h3>
+            
+            <div class="summary-details">
+              <div class="summary-row">
+                <span class="row-label">Procedimento:</span>
+                <span class="row-value highlight" id="summary-service">Nenhum selecionado</span>
+              </div>
+              <div class="summary-row">
+                <span class="row-label">Duração estimada:</span>
+                <span class="row-value" id="summary-duration">-</span>
+              </div>
+              <div class="summary-row">
+                <span class="row-label">Data escolhida:</span>
+                <span class="row-value" id="summary-date">-</span>
+              </div>
+              <div class="summary-row">
+                <span class="row-label">Horário reservado:</span>
+                <span class="row-value" id="summary-time">-</span>
+              </div>
+              <div class="summary-row">
+                <span class="row-label">Pagamento:</span>
+                <span class="row-value badge-presencial">Presencial no Studio</span>
+              </div>
+              <div class="summary-divider"></div>
+              <div class="summary-total">
+                <span>Valor Total</span>
+                <span class="total-price" id="summary-price">R$ 0,00</span>
+              </div>
+            </div>
+
+            <button class="confirm-btn" id="confirm-booking-btn" disabled>
+              <span class="btn-text">Confirmar Agendamento</span>
+            </button>
+            <p class="guarantee-text">✨ Reserva garantida sem pagamento prévio. Em caso de imprevisto, avise com antecedência.</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- VISÃO 2: PAINEL DE GESTÃO DA SAMARA (ADMIN) -->
+    <aside class="admin-view" id="admin-view">
+      
+      <div class="admin-topbar">
+        <div class="admin-header-title">
+          <h2 class="admin-title">Painel de Gestão Samara Studio</h2>
+          <p class="admin-desc">Controle de clientes, faturamento e agenda em tempo real no Supabase</p>
+        </div>
+        <div class="admin-nav-tabs">
+          <button class="admin-tab-btn active" id="tab-btn-agenda">📅 Agenda</button>
+          <button class="admin-tab-btn" id="tab-btn-services">💅 Preços & Serviços</button>
+          <button class="admin-tab-btn" id="tab-btn-blocks">🚫 Bloqueios & Folgas</button>
+          <button class="admin-tab-btn" id="tab-btn-clients">👥 Clientes</button>
+          <button class="admin-tab-btn" id="tab-btn-config">⚙️ Configurações</button>
+        </div>
+      </div>
+
+      <!-- Métricas do Studio -->
+      <div class="metrics-grid" id="admin-metrics-grid">
+        <div class="metric-card">
+          <span class="metric-icon">💅</span>
+          <div class="metric-data">
+            <span class="metric-number" id="metric-today-count">0</span>
+            <span class="metric-label">Atendimentos Hoje</span>
+          </div>
+        </div>
+        <div class="metric-card">
+          <span class="metric-icon">📅</span>
+          <div class="metric-data">
+            <span class="metric-number" id="metric-total-active">0</span>
+            <span class="metric-label">Agendamentos Ativos</span>
+          </div>
+        </div>
+        <div class="metric-card">
+          <span class="metric-icon">💎</span>
+          <div class="metric-data">
+            <span class="metric-number" id="metric-projected-revenue">R$ 0,00</span>
+            <span class="metric-label">Faturamento Previsto</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Aba 1: Tabela de Agendamentos -->
+      <section class="admin-tab-content active" id="admin-content-agenda">
+        <div class="admin-table-container">
+          <div class="admin-table-header">
+            <h3 class="table-title">Lista de Agendamentos</h3>
+            <div class="table-controls">
+              <button class="btn-primary-action" id="btn-open-manual-booking" title="Agendar manualmente para uma cliente">
+                <span>➕</span> Novo Agendamento
+              </button>
+              <select id="admin-date-filter" class="custom-select">
+                <option value="all">Todas as Datas</option>
+                <option value="today">Apenas Hoje</option>
+                <option value="tomorrow">Amanhã</option>
+              </select>
+              <select id="admin-status-filter" class="custom-select">
+                <option value="all">Todos os Status</option>
+                <option value="Confirmado">Confirmados</option>
+                <option value="Concluído">Concluídos</option>
+                <option value="Cancelado">Cancelados</option>
+              </select>
+              <button class="btn-refresh" id="btn-export-csv" title="Exportar para Excel / CSV">📊 Baixar Planilha</button>
+              <button class="btn-refresh" id="btn-refresh-agenda" title="Recarregar dados">🔄 Atualizar</button>
+            </div>
+          </div>
+
+          <div class="appointments-list" id="admin-appointments-list">
+            <!-- Injetado dinamicamente via app.js -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Aba 2: Gestão de Preços & Procedimentos -->
+      <section class="admin-tab-content" id="admin-content-services">
+        <div class="admin-table-container">
+          <div class="admin-table-header">
+            <div>
+              <h3 class="table-title">Catálogo de Procedimentos (Supabase)</h3>
+              <p class="section-desc">Edite os preços em tempo real para atualizar o site instantaneamente</p>
+            </div>
+          </div>
+          <div class="admin-services-table-wrapper" id="admin-services-list">
+            <!-- Injetado dinamicamente via app.js -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Aba 3: Bloqueios de Agenda & Folgas -->
+      <section class="admin-tab-content" id="admin-content-blocks">
+        <div class="admin-table-container">
+          <h3 class="table-title">Adicionar Novo Bloqueio de Horário</h3>
+          <p class="section-desc" style="margin-bottom: 16px;">Trave datas inteiras ou intervalos (almoço, médico ou feriados) no calendário das clientes</p>
+
+          <form class="block-form" id="add-block-form" onsubmit="event.preventDefault();">
+            <div class="config-grid">
+              <div class="input-group">
+                <label for="block-date-input">Data do Bloqueio *</label>
+                <input type="date" id="block-date-input" required>
+              </div>
+              <div class="input-group">
+                <label for="block-start-input">Horário Inicial (opcional)</label>
+                <input type="time" id="block-start-input">
+              </div>
+              <div class="input-group">
+                <label for="block-end-input">Horário Final (opcional)</label>
+                <input type="time" id="block-end-input">
+              </div>
+              <div class="input-group">
+                <label for="block-reason-input">Motivo *</label>
+                <input type="text" id="block-reason-input" placeholder="Ex: Pausa de Almoço, Curso, Feriado" required>
+              </div>
+            </div>
+            <p class="pin-hint" style="margin-top: 10px;">* Deixe os horários em branco para bloquear o dia inteiro.</p>
+            <button class="confirm-btn" style="max-width: 220px; margin-top: 14px;" id="btn-save-block">Bloquear no Calendário</button>
+          </form>
+
+          <div style="margin-top: 32px;">
+            <h4 class="table-title" style="font-size: 1.05rem; margin-bottom: 12px;">Bloqueios Ativos Cadastrados</h4>
+            <div class="blocks-list" id="admin-blocks-list">
+              <!-- Injetado dinamicamente via app.js -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Aba 4: Base de Clientes -->
+      <section class="admin-tab-content" id="admin-content-clients">
+        <div class="admin-table-container">
+          <div class="admin-table-header">
+            <div>
+              <h3 class="table-title">Base de Clientes (Supabase)</h3>
+              <p class="section-desc">Clientes cadastradas com histórico de visitas e contato direto</p>
+            </div>
+            <div class="table-controls">
+              <input type="text" id="client-search-input" class="custom-select" style="min-width: 230px;" placeholder="🔍 Buscar por nome ou telefone...">
+            </div>
+          </div>
+          <div class="clients-list" id="admin-clients-list">
+            <!-- Injetado dinamicamente via app.js -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Aba 5: Configurações do Studio -->
+      <section class="admin-tab-content" id="admin-content-config">
+        <div class="admin-table-container">
+          <h3 class="table-title">Configurações Gerais do Studio</h3>
+          <p class="section-desc" style="margin-bottom: 20px;">Edite as informações exibidas nos links e comprovantes</p>
+
+          <form class="config-form" id="studio-config-form" onsubmit="event.preventDefault();">
+            <div class="config-grid">
+              <div class="input-group">
+                <label for="cfg-studio-name">Nome do Studio</label>
+                <input type="text" id="cfg-studio-name" value="Samara Agendamento">
+              </div>
+              <div class="input-group">
+                <label for="cfg-samara-whatsapp">WhatsApp da Samara (com DDD e DDI 55)</label>
+                <input type="text" id="cfg-samara-whatsapp" value="5527988459016" placeholder="Ex: 5527988459016">
+              </div>
+              <div class="input-group">
+                <label for="cfg-studio-address">Endereço do Studio</label>
+                <input type="text" id="cfg-studio-address" value="Rua Nossa Senhora das Graças, Santo Antônio, Cariacica" placeholder="Ex: Rua Nossa Senhora das Graças, Santo Antônio, Cariacica">
+              </div>
+              <div class="input-group">
+                <label for="cfg-admin-pin">PIN de 4 Dígitos do Painel Admin</label>
+                <input type="password" maxlength="4" id="cfg-admin-pin" value="1234">
+              </div>
+            </div>
+            <div style="margin-top: 20px; display: flex; gap: 12px;">
+              <button class="confirm-btn" style="max-width: 200px;" id="btn-save-config">Salvar Configurações</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+    </aside>
+
+    <!-- MODAL DE PIN DE SEGURANÇA (ADMIN) -->
+    <div class="modal-overlay" id="pin-modal">
+      <div class="modal-box pin-box">
+        <div class="pin-icon-badge">🔒</div>
+        <h3 class="modal-title">Acesso Restrito Samara</h3>
+        <p class="modal-desc">Digite o PIN de 4 dígitos para acessar o painel administrativo.</p>
+
+        <div class="pin-display" id="pin-display">
+          <span class="pin-dot"></span>
+          <span class="pin-dot"></span>
+          <span class="pin-dot"></span>
+          <span class="pin-dot"></span>
+        </div>
+
+        <div class="keypad-grid" id="keypad-grid">
+          <button class="key-btn" data-key="1">1</button>
+          <button class="key-btn" data-key="2">2</button>
+          <button class="key-btn" data-key="3">3</button>
+          <button class="key-btn" data-key="4">4</button>
+          <button class="key-btn" data-key="5">5</button>
+          <button class="key-btn" data-key="6">6</button>
+          <button class="key-btn" data-key="7">7</button>
+          <button class="key-btn" data-key="8">8</button>
+          <button class="key-btn" data-key="9">9</button>
+          <button class="key-btn clear" data-key="clear">Limpar</button>
+          <button class="key-btn" data-key="0">0</button>
+          <button class="key-btn del" data-key="del">⌫</button>
+        </div>
+
+        <p class="pin-hint">PIN padrão inicial: <strong>1234</strong> (editável no painel)</p>
+        <button class="btn-close-modal" id="close-pin-modal-btn">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- MODAL DE SUCESSO DO AGENDAMENTO -->
+    <div class="modal-overlay" id="success-modal">
+      <div class="modal-box">
+        <div class="modal-badge-success">✓</div>
+        <h3 class="modal-title">Agendamento Confirmado!</h3>
+        <p class="modal-desc">Sua sessão foi salva e registrada diretamente na agenda da Samara.</p>
+
+        <div class="modal-ticket" id="modal-ticket-details">
+          <!-- Detalhes do comprovante preenchidos via app.js -->
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-whatsapp" id="whatsapp-confirm-btn">
+            <span class="wa-icon">💬</span> Enviar no WhatsApp da Samara
+          </button>
+          <button class="btn-calendar" id="calendar-add-btn">
+            <span class="cal-icon">📅</span> Adicionar ao meu Google Agenda
+          </button>
+          <button class="btn-close-modal" id="close-modal-btn">Concluir e Voltar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL DE NOVO AGENDAMENTO MANUAL (ADMIN) -->
+    <div class="modal-overlay" id="manual-booking-modal">
+      <div class="modal-box modal-lg">
+        <div class="modal-header-row">
+          <h3 class="modal-title">➕ Novo Agendamento Manual</h3>
+          <button class="modal-close-x" id="close-manual-modal-btn">✕</button>
+        </div>
+        <p class="modal-desc">Insira um agendamento rápido recebido pelo WhatsApp ou presencialmente no studio.</p>
+
+        <form class="manual-booking-form" id="manual-booking-form" onsubmit="event.preventDefault();">
+          <div class="config-grid">
+            <div class="input-group">
+              <label for="manual-client-name">Nome da Cliente *</label>
+              <input type="text" id="manual-client-name" placeholder="Ex: Fernanda Lima" required>
+            </div>
+            <div class="input-group">
+              <label for="manual-client-phone">WhatsApp da Cliente *</label>
+              <input type="tel" id="manual-client-phone" placeholder="(11) 99999-9999" required>
+            </div>
+          </div>
+
+          <div class="input-group" style="margin-top: 14px;">
+            <label for="manual-service-select">Procedimento / Serviço *</label>
+            <select id="manual-service-select" class="custom-select" style="width: 100%;" required>
+              <!-- Preenchido dinamicamente via app.js -->
+            </select>
+          </div>
+
+          <div class="config-grid" style="margin-top: 14px;">
+            <div class="input-group">
+              <label for="manual-date-input">Data do Atendimento *</label>
+              <input type="date" id="manual-date-input" required>
+            </div>
+            <div class="input-group">
+              <label for="manual-time-input">Horário de Início *</label>
+              <input type="time" id="manual-time-input" required>
+            </div>
+          </div>
+
+          <div class="input-group" style="margin-top: 14px;">
+            <label for="manual-notes-input">Observações (opcional)</label>
+            <input type="text" id="manual-notes-input" placeholder="Ex: Inspiração via foto, cliente nova...">
+          </div>
+
+          <div id="manual-booking-feedback" class="manual-feedback-text"></div>
+
+          <div class="modal-actions" style="margin-top: 20px;">
+            <button type="submit" class="confirm-btn" id="save-manual-booking-btn">
+              <span class="btn-text">Salvar na Agenda</span>
+            </button>
+            <button type="button" class="btn-close-modal" id="cancel-manual-modal-btn">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <footer class="app-footer">
+      <p>© 2026 Samara Agendamento • Rua Nossa Senhora das Graças, Santo Antônio, Cariacica • WhatsApp: (27) 98845-9016</p>
+    </footer>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

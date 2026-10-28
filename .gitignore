@@ -1,0 +1,12 @@
+# Dependências locais
+node_modules/
+.npm/
+
+# Logs e arquivos de sistema
+*.log
+.DS_Store
+Thumbs.db
+
+# Configurações locais temporárias
+.vercel/
+.system_generated/
