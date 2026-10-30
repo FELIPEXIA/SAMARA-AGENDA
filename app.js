@@ -52,10 +52,15 @@ const FALLBACK_SERVICES = [
 const state = {
   services: FALLBACK_SERVICES,
   selectedService: null,
+  selectedServices: [],
   currentCalendarDate: new Date(),
   selectedDate: null,
   selectedTimeSlot: null,
-  baseTimeSlots: ['08:30', '10:00', '11:30', '13:00', '14:30', '16:00', '17:00'],
+  baseTimeSlots: [
+    '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+    '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00',
+    '15:30', '16:00', '16:30', '17:00', '17:30', '18:00'
+  ],
   appointments: [],
   blockedTimes: [],
   serviceSearchQuery: '',
@@ -77,10 +82,12 @@ const state = {
 
 const STORAGE_APPTS = 'samara_appts_official';
 const STORAGE_CONFIG = 'samara_studio_config';
+const STORAGE_SAVED_CLIENT = 'samara_saved_client_profile';
 
 // Inicialização Geral
 document.addEventListener('DOMContentLoaded', async () => {
   loadStudioConfig();
+  loadSavedClientProfile();
   await loadServicesFromSupabase();
   await loadBlockedTimes();
   await loadAppointments();
@@ -327,7 +334,81 @@ function updateCloudIndicator() {
 }
 
 // -------------------------------------------------------------
-// RENDERIZAÇÃO DE SERVIÇOS
+// HELPERS DE MULTI-SERVIÇOS, TELEFONE E CLIENTE RECORRENTE
+// -------------------------------------------------------------
+function formatDurationLabel(totalMinutes) {
+  if (!totalMinutes || totalMinutes <= 0) return '-';
+  const hours = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
+  if (hours === 0) return `${mins} minutos`;
+  if (mins === 0) return hours === 1 ? '1 hora' : `${hours} horas`;
+  return `${hours}h${String(mins).padStart(2, '0')}`;
+}
+
+function getSelectedSummary() {
+  if (!state.selectedServices || state.selectedServices.length === 0) {
+    return null;
+  }
+  const totalPrice = state.selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0);
+  const totalDuration = state.selectedServices.reduce((sum, s) => sum + Number(s.durationMinutes || 60), 0);
+  const combinedTitle = state.selectedServices.map(s => s.title).join(' + ');
+  const durationLabel = state.selectedServices.length === 1
+    ? state.selectedServices[0].durationLabel
+    : formatDurationLabel(totalDuration);
+
+  return {
+    id: state.selectedServices[0].id,
+    title: combinedTitle,
+    price: totalPrice,
+    durationMinutes: totalDuration,
+    durationLabel: durationLabel,
+    count: state.selectedServices.length
+  };
+}
+
+function formatPhoneMask(val) {
+  const digits = String(val || '').replace(/\D/g, '').slice(0, 11);
+  if (digits.length === 0) return '';
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+}
+
+function loadSavedClientProfile() {
+  const raw = localStorage.getItem(STORAGE_SAVED_CLIENT);
+  if (!raw) return;
+  try {
+    const saved = JSON.parse(raw);
+    const nameInput = document.getElementById('client-name');
+    const phoneInput = document.getElementById('client-phone');
+    const notice = document.getElementById('saved-client-notice');
+    if (saved && saved.name && saved.phone && nameInput && phoneInput) {
+      nameInput.value = saved.name;
+      phoneInput.value = formatPhoneMask(saved.phone);
+      if (notice) notice.style.display = 'flex';
+    }
+  } catch (e) {
+    console.warn('Erro ao carregar perfil salvo da cliente:', e);
+  }
+}
+
+function clearSavedClientProfile() {
+  localStorage.removeItem(STORAGE_SAVED_CLIENT);
+  const nameInput = document.getElementById('client-name');
+  const phoneInput = document.getElementById('client-phone');
+  const notice = document.getElementById('saved-client-notice');
+  if (nameInput) {
+    nameInput.value = '';
+    nameInput.focus();
+  }
+  if (phoneInput) phoneInput.value = '';
+  if (notice) notice.style.display = 'none';
+  showToast('Pode digitar os novos dados!');
+}
+
+// -------------------------------------------------------------
+// RENDERIZAÇÃO DE SERVIÇOS (SELEÇÃO ÚNICA OU MÚLTIPLA)
 // -------------------------------------------------------------
 function renderServices() {
   const grid = document.getElementById('services-grid');
@@ -347,11 +428,12 @@ function renderServices() {
 
   if (filtered.length === 0) {
     grid.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: var(--text-faint); padding: 36px;">Nenhum procedimento encontrado com o termo "${state.serviceSearchQuery}".</p>`;
+    renderSelectedServicesPillbar();
     return;
   }
 
   filtered.forEach(service => {
-    const isSelected = state.selectedService && state.selectedService.id === service.id;
+    const isSelected = state.selectedServices.some(s => s.id === service.id);
     const card = document.createElement('article');
     card.className = `service-card ${isSelected ? 'selected' : ''}`;
     card.id = `service-${service.id}`;
@@ -388,14 +470,73 @@ function renderServices() {
 
     grid.appendChild(card);
   });
+
+  renderSelectedServicesPillbar();
+}
+
+function renderSelectedServicesPillbar() {
+  const pillbar = document.getElementById('selected-services-pillbar');
+  const summaryText = document.getElementById('pillbar-summary-text');
+  const chipsContainer = document.getElementById('pillbar-chips');
+  if (!pillbar || !summaryText || !chipsContainer) return;
+
+  const summary = getSelectedSummary();
+  if (!summary) {
+    pillbar.style.display = 'none';
+    chipsContainer.innerHTML = '';
+    return;
+  }
+
+  pillbar.style.display = 'flex';
+  const labelCount = summary.count === 1 ? '1 procedimento selecionado' : `${summary.count} procedimentos combinados`;
+  summaryText.textContent = `${labelCount} • ⏱️ ${summary.durationLabel} • R$ ${summary.price.toFixed(2).replace('.', ',')}`;
+
+  chipsContainer.innerHTML = state.selectedServices.map(srv => `
+    <span class="selected-srv-chip">
+      ${srv.icon} ${srv.title}
+      <button type="button" onclick="removeSelectedService('${srv.id}')" title="Remover ${srv.title}">✕</button>
+    </span>
+  `).join('');
 }
 
 function selectService(service) {
-  state.selectedService = service;
+  const existsIndex = state.selectedServices.findIndex(s => s.id === service.id);
+  if (existsIndex >= 0) {
+    state.selectedServices.splice(existsIndex, 1);
+    showToast(`Removido: ${service.title}`);
+  } else {
+    state.selectedServices.push(service);
+    showToast(`✓ Adicionado: ${service.title} (${service.durationLabel})`);
+  }
+
+  state.selectedService = getSelectedSummary();
+
+  // Ao alterar os serviços, revalidar se o horário escolhido ainda cabe na agenda
+  if (state.selectedTimeSlot) {
+    state.selectedTimeSlot = null;
+  }
+
   renderServices();
   renderTimeSlots();
   updateSummary();
-  showToast(`Procedimento: ${service.title} (${service.durationLabel})`);
+}
+
+window.removeSelectedService = function(serviceId) {
+  state.selectedServices = state.selectedServices.filter(s => s.id !== serviceId);
+  state.selectedService = getSelectedSummary();
+  state.selectedTimeSlot = null;
+  renderServices();
+  renderTimeSlots();
+  updateSummary();
+};
+
+function clearSelectedServices() {
+  state.selectedServices = [];
+  state.selectedService = null;
+  state.selectedTimeSlot = null;
+  renderServices();
+  renderTimeSlots();
+  updateSummary();
 }
 
 // -------------------------------------------------------------
@@ -444,7 +585,7 @@ function renderCalendar() {
     const isSunday = dayDate.getDay() === 0;
 
     // Checar se o dia todo está bloqueado na tabela public.blocked_times
-    const isDayBlocked = state.blockedTimes.some(b => b.block_date === dayISO && !b.start_time);
+    const isDayBlocked = state.blockedTimes.some(b => (b.block_date || b.blockDate) === dayISO && !(b.start_time || b.startTime));
 
     const isSelected = state.selectedDate === dayISO;
     const isToday = formatDateISO(today) === dayISO;
@@ -473,7 +614,7 @@ function renderCalendar() {
 }
 
 // -------------------------------------------------------------
-// HORÁRIOS COM BLOQUEIO INTELIGENTE POR DURAÇÃO
+// HORÁRIOS DE 30 EM 30 MIN COM BLOQUEIO POR DURAÇÃO E HORA ATUAL
 // -------------------------------------------------------------
 function renderTimeSlots() {
   const displayLabel = document.getElementById('selected-date-display');
@@ -485,40 +626,61 @@ function renderTimeSlots() {
     return;
   }
 
+  const summary = getSelectedSummary();
   const [y, m, d] = state.selectedDate.split('-');
-  const durationInfo = state.selectedService ? ` (Duração: ${state.selectedService.durationLabel})` : '';
+  const durationInfo = summary ? ` (Duração: ${summary.durationLabel})` : '';
   displayLabel.textContent = `Horários para ${d}/${m}/${y}${durationInfo}:`;
 
   const dayBookings = state.appointments.filter(a => a.date === state.selectedDate && a.status === 'Confirmado');
-  const dayBlocks = state.blockedTimes.filter(b => b.block_date === state.selectedDate);
+  const dayBlocks = state.blockedTimes.filter(b => (b.block_date || b.blockDate) === state.selectedDate);
+
+  const now = new Date();
+  const isTodaySelected = state.selectedDate === formatDateISO(now);
+  const currentMinutesOfDay = now.getHours() * 60 + now.getMinutes();
+
+  let availableCount = 0;
 
   state.baseTimeSlots.forEach(time => {
     const slotMinutes = timeToMinutes(time);
-    const serviceDuration = state.selectedService ? state.selectedService.durationMinutes : 60;
+    const serviceDuration = summary ? summary.durationMinutes : 60;
     const slotEndMinutes = slotMinutes + serviceDuration;
 
-    // Ultrapassa horário de fechamento das 19:00
-    const isTooLate = slotEndMinutes > (19 * 60);
+    // 1. No dia de hoje, esconder horários que já passaram (com 15 min de margem)
+    if (isTodaySelected && slotMinutes <= currentMinutesOfDay + 15) {
+      return;
+    }
 
-    // Conflito com agendamentos existentes
+    // 2. Ultrapassa horário limite de encerramento (19:30 máximo para procedimentos longos)
+    const isTooLate = slotEndMinutes > (19 * 60 + 30);
+
+    // 3. Conflito com agendamentos existentes (usa endTime real do agendamento quando salvo)
     const isAppointmentConflict = dayBookings.some(booking => {
-      const bStart = timeToMinutes(booking.time);
-      const bookingService = state.services.find(s => s.id === booking.serviceId);
-      const bDuration = bookingService ? bookingService.durationMinutes : 90;
-      const bEnd = bStart + bDuration;
+      const bStart = timeToMinutes(booking.time.slice(0, 5));
+      let bEnd;
+      if (booking.endTime) {
+        bEnd = timeToMinutes(booking.endTime.slice(0, 5));
+      } else {
+        const bookingService = state.services.find(s => s.id === booking.serviceId);
+        const bDuration = bookingService ? bookingService.durationMinutes : 90;
+        bEnd = bStart + bDuration;
+      }
       return slotMinutes < bEnd && slotEndMinutes > bStart;
     });
 
-    // Conflito com pausas/bloqueios parciais da Samara
+    // 4. Conflito com pausas/bloqueios parciais da Samara
     const isBlockedConflict = dayBlocks.some(block => {
-      if (!block.start_time) return true; // Dia todo bloqueado
-      const bStart = timeToMinutes(block.start_time);
-      const bEnd = block.end_time ? timeToMinutes(block.end_time) : (bStart + 60);
+      const startStr = block.start_time || block.startTime;
+      const endStr = block.end_time || block.endTime;
+      if (!startStr) return true; // Dia todo bloqueado
+      const bStart = timeToMinutes(startStr.slice(0, 5));
+      const bEnd = endStr ? timeToMinutes(endStr.slice(0, 5)) : (bStart + 60);
       return slotMinutes < bEnd && slotEndMinutes > bStart;
     });
 
     const isBooked = isAppointmentConflict || isBlockedConflict || isTooLate;
     const isSelected = state.selectedTimeSlot === time;
+
+    if (!isBooked) availableCount++;
 
     const btn = document.createElement('button');
     btn.className = `slot-btn ${isSelected ? 'selected' : ''} ${isBooked ? 'booked' : ''}`;
@@ -533,11 +695,27 @@ function renderTimeSlots() {
         state.selectedTimeSlot = time;
         renderTimeSlots();
         updateSummary();
+        // Rolar suavemente para o Passo 3 (Seus Dados e Confirmação)
+        const step3 = document.getElementById('checkout-section');
+        if (step3) {
+          setTimeout(() => {
+            step3.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 120);
+        }
       });
     }
 
     slotsGrid.appendChild(btn);
   });
+
+  if (slotsGrid.children.length === 0 || availableCount === 0) {
+    const msg = document.createElement('p');
+    msg.style.cssText = 'grid-column: 1/-1; color: var(--primary-rose-light); font-size: 13px; text-align: center; padding: 14px 8px;';
+    msg.textContent = isTodaySelected
+      ? 'Não há mais horários disponíveis para hoje com essa duração. Selecione outro dia no calendário!'
+      : 'Todos os horários deste dia já estão preenchidos para essa duração. Escolha outra data!';
+    slotsGrid.appendChild(msg);
+  }
 }
 
 function timeToMinutes(timeStr) {
@@ -552,7 +730,7 @@ function minutesToTime(totalMinutes) {
 }
 
 // -------------------------------------------------------------
-// RESUMO E VALIDAÇÃO
+// RESUMO, DESBLOQUEIO DE PASSOS E BARRA FLUTUANTE
 // -------------------------------------------------------------
 function updateSummary() {
   const summaryService = document.getElementById('summary-service');
@@ -562,10 +740,13 @@ function updateSummary() {
   const summaryPrice = document.getElementById('summary-price');
   const confirmBtn = document.getElementById('confirm-booking-btn');
 
-  if (state.selectedService) {
-    summaryService.textContent = state.selectedService.title;
-    summaryDuration.textContent = state.selectedService.durationLabel;
-    summaryPrice.textContent = `R$ ${state.selectedService.price.toFixed(2).replace('.', ',')}`;
+  const summary = getSelectedSummary();
+  state.selectedService = summary;
+
+  if (summary) {
+    summaryService.textContent = summary.title;
+    summaryDuration.textContent = summary.durationLabel;
+    summaryPrice.textContent = `R$ ${summary.price.toFixed(2).replace('.', ',')}`;
   } else {
     summaryService.textContent = 'Nenhum selecionado';
     summaryDuration.textContent = '-';
@@ -579,16 +760,67 @@ function updateSummary() {
     summaryDate.textContent = '-';
   }
 
-  if (state.selectedTimeSlot && state.selectedService) {
+  if (state.selectedTimeSlot && summary) {
     const startMin = timeToMinutes(state.selectedTimeSlot);
-    const endMin = startMin + state.selectedService.durationMinutes;
+    const endMin = startMin + summary.durationMinutes;
     summaryTime.textContent = `${state.selectedTimeSlot}h às ${minutesToTime(endMin)}h`;
   } else {
     summaryTime.textContent = state.selectedTimeSlot ? `${state.selectedTimeSlot}h` : '-';
   }
 
-  const isValid = state.selectedService && state.selectedDate && state.selectedTimeSlot;
+  const isValid = Boolean(summary && state.selectedDate && state.selectedTimeSlot);
   confirmBtn.disabled = !isValid;
+
+  updateStepLocksAndFloatingBar(summary);
+}
+
+function updateStepLocksAndFloatingBar(summary) {
+  const step2Section = document.getElementById('datetime-section');
+  const step3Section = document.getElementById('checkout-section');
+  const stepInd1 = document.getElementById('step-ind-1');
+  const stepInd2 = document.getElementById('step-ind-2');
+  const floatingBar = document.getElementById('floating-booking-bar');
+  const floatingTitle = document.getElementById('floating-bar-title');
+  const floatingMeta = document.getElementById('floating-bar-meta');
+  const floatingBtn = document.getElementById('floating-bar-btn');
+
+  const hasService = Boolean(summary);
+  const hasDateTime = Boolean(summary && state.selectedDate && state.selectedTimeSlot);
+
+  if (stepInd1) {
+    stepInd1.classList.toggle('completed', hasService);
+    stepInd1.textContent = hasService ? '✓' : '1';
+  }
+
+  if (step2Section) {
+    step2Section.classList.toggle('step-locked', !hasService);
+  }
+
+  if (stepInd2) {
+    stepInd2.classList.toggle('completed', hasDateTime);
+    stepInd2.textContent = hasDateTime ? '✓' : '2';
+  }
+
+  if (step3Section) {
+    step3Section.classList.toggle('step-locked', !hasDateTime);
+  }
+
+  if (floatingBar && floatingTitle && floatingMeta && floatingBtn) {
+    if (!hasService || state.isAdminView) {
+      floatingBar.classList.remove('visible');
+    } else {
+      floatingBar.classList.add('visible');
+      floatingTitle.textContent = summary.title;
+      if (!hasDateTime) {
+        floatingMeta.textContent = `⏱️ ${summary.durationLabel} • R$ ${summary.price.toFixed(2).replace('.', ',')}`;
+        floatingBtn.textContent = 'Escolher Horário ↓';
+      } else {
+        const [y, m, d] = state.selectedDate.split('-');
+        floatingMeta.textContent = `📅 ${d}/${m} às ${state.selectedTimeSlot}h • R$ ${summary.price.toFixed(2).replace('.', ',')}`;
+        floatingBtn.textContent = 'Finalizar Reserva ↓';
+      }
+    }
+  }
 }
 
 // -------------------------------------------------------------
@@ -600,28 +832,52 @@ async function confirmBooking() {
   const notesInput = document.getElementById('client-notes');
 
   const name = nameInput.value.trim();
-  const phone = phoneInput.value.trim();
+  const rawPhone = phoneInput.value.trim();
+  const phoneDigits = rawPhone.replace(/\D/g, '');
 
-  if (!name || !phone) {
-    showToast('⚠️ Por favor, informe seu nome e WhatsApp.');
+  if (!name) {
+    showToast('⚠️ Por favor, informe seu nome completo.');
     nameInput.focus();
     return;
   }
 
+  if (phoneDigits.length < 10) {
+    showToast('⚠️ Informe um WhatsApp válido com DDD (ex: 27 99999-9999).');
+    phoneInput.focus();
+    return;
+  }
+
+  const formattedPhone = formatPhoneMask(phoneDigits);
+  const summary = getSelectedSummary();
+  if (!summary) {
+    showToast('⚠️ Selecione pelo menos 1 procedimento.');
+    return;
+  }
+
+  // Salvar dados da cliente no aparelho para próximas visitas
+  localStorage.setItem(STORAGE_SAVED_CLIENT, JSON.stringify({
+    name: name,
+    phone: formattedPhone
+  }));
+  const savedNotice = document.getElementById('saved-client-notice');
+  if (savedNotice) savedNotice.style.display = 'flex';
+
   const startMin = timeToMinutes(state.selectedTimeSlot);
-  const endMin = startMin + state.selectedService.durationMinutes;
+  const endMin = startMin + summary.durationMinutes;
   const calculatedEndTime = minutesToTime(endMin);
 
   const newAppointment = {
     id: 'apt-' + Date.now().toString().slice(-6),
     clientName: name,
-    clientPhone: phone,
-    serviceId: state.selectedService.id,
-    serviceTitle: state.selectedService.title,
+    clientPhone: formattedPhone,
+    serviceId: summary.id,
+    serviceTitle: summary.title,
+    durationMinutes: summary.durationMinutes,
+    durationLabel: summary.durationLabel,
     date: state.selectedDate,
     time: state.selectedTimeSlot,
     endTime: calculatedEndTime,
-    price: state.selectedService.price,
+    price: summary.price,
     notes: notesInput.value.trim(),
     status: 'Confirmado',
     createdAt: new Date().toISOString()
@@ -630,13 +886,14 @@ async function confirmBooking() {
   await saveNewAppointment(newAppointment);
   state.lastConfirmedBooking = newAppointment;
 
-  renderTimeSlots();
   openSuccessModal(newAppointment);
 
-  nameInput.value = '';
-  phoneInput.value = '';
   notesInput.value = '';
+  state.selectedServices = [];
+  state.selectedService = null;
   state.selectedTimeSlot = null;
+  renderServices();
+  renderTimeSlots();
   updateSummary();
 
   if (state.isAdminView) {
@@ -652,7 +909,7 @@ function openSuccessModal(booking) {
   const ticketDetails = document.getElementById('modal-ticket-details');
   const [y, m, d] = booking.date.split('-');
   const service = state.services.find(s => s.id === booking.serviceId);
-  const durationLabel = service ? service.durationLabel : 'Tempo estimado';
+  const durationLabel = booking.durationLabel || (service ? service.durationLabel : 'Tempo estimado');
 
   ticketDetails.innerHTML = `
     <div class="modal-ticket-item">
@@ -664,7 +921,7 @@ function openSuccessModal(booking) {
       <span>${booking.clientName}</span>
     </div>
     <div class="modal-ticket-item">
-      <span>Procedimento:</span>
+      <span>Procedimento(s):</span>
       <span>${booking.serviceTitle}</span>
     </div>
     <div class="modal-ticket-item">
@@ -697,11 +954,11 @@ function sendWhatsAppMessage() {
   const b = state.lastConfirmedBooking;
   const [y, m, d] = b.date.split('-');
   const service = state.services.find(s => s.id === b.serviceId);
-  const durLabel = service ? service.durationLabel : '';
+  const durLabel = b.durationLabel || (service ? service.durationLabel : '');
 
   const msg = `✨ *Olá Samara! Novo agendamento realizado no site:*%0A%0A` +
     `👤 *Cliente:* ${encodeURIComponent(b.clientName)}%0A` +
-    `💅 *Procedimento:* ${encodeURIComponent(b.serviceTitle)}%0A` +
+    `💅 *Procedimento(s):* ${encodeURIComponent(b.serviceTitle)}%0A` +
     (durLabel ? `⏱️ *Duração:* ${encodeURIComponent(durLabel)}%0A` : '') +
     `📅 *Data:* ${d}/${m}/${y}%0A` +
     `⏰ *Horário:* ${b.time}h às ${b.endTime || ''}h%0A` +
@@ -723,7 +980,7 @@ function addToGoogleCalendar() {
   const [hh, mm] = b.time.split(':');
 
   const service = state.services.find(s => s.id === b.serviceId);
-  const durationMin = service ? service.durationMinutes : 120;
+  const durationMin = b.durationMinutes || (service ? service.durationMinutes : 120);
 
   const startMinutes = Number(hh) * 60 + Number(mm);
   const endMinutes = startMinutes + durationMin;
@@ -813,6 +1070,7 @@ function enterAdminView() {
   document.getElementById('client-view').classList.remove('active');
   document.getElementById('admin-view').classList.add('active');
   document.getElementById('view-mode-label').textContent = 'Ver Modo Cliente';
+  updateSummary();
   renderAdminAppointments();
 }
 
@@ -823,6 +1081,7 @@ function exitAdminView() {
   document.getElementById('view-mode-label').textContent = 'Painel Admin';
   renderServices();
   renderTimeSlots();
+  updateSummary();
 }
 
 // -------------------------------------------------------------
@@ -1297,6 +1556,57 @@ function setupEventListeners() {
   document.getElementById('close-modal-btn').addEventListener('click', () => {
     document.getElementById('success-modal').classList.remove('active');
   });
+
+  // Botões da Barra de Múltiplos Procedimentos e Barra Flutuante
+  const clearServicesBtn = document.getElementById('clear-services-btn');
+  if (clearServicesBtn) {
+    clearServicesBtn.addEventListener('click', clearSelectedServices);
+  }
+
+  const gotoStep2Btn = document.getElementById('goto-step2-btn');
+  if (gotoStep2Btn) {
+    gotoStep2Btn.addEventListener('click', () => {
+      const step2 = document.getElementById('datetime-section');
+      if (step2) step2.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
+  const floatingBarBtn = document.getElementById('floating-bar-btn');
+  if (floatingBarBtn) {
+    floatingBarBtn.addEventListener('click', () => {
+      if (!state.selectedTimeSlot) {
+        const step2 = document.getElementById('datetime-section');
+        if (step2) step2.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        const step3 = document.getElementById('checkout-section');
+        if (step3) step3.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const nameInput = document.getElementById('client-name');
+        if (nameInput && !nameInput.value) {
+          setTimeout(() => nameInput.focus(), 400);
+        }
+      }
+    });
+  }
+
+  // Máscara automática de WhatsApp e Limpar Dados Salvos
+  const clientPhoneInput = document.getElementById('client-phone');
+  if (clientPhoneInput) {
+    clientPhoneInput.addEventListener('input', (e) => {
+      e.target.value = formatPhoneMask(e.target.value);
+    });
+  }
+
+  const manualPhoneInput = document.getElementById('manual-client-phone');
+  if (manualPhoneInput) {
+    manualPhoneInput.addEventListener('input', (e) => {
+      e.target.value = formatPhoneMask(e.target.value);
+    });
+  }
+
+  const clearSavedClientBtn = document.getElementById('clear-saved-client-btn');
+  if (clearSavedClientBtn) {
+    clearSavedClientBtn.addEventListener('click', clearSavedClientProfile);
+  }
 
   const statusFilter = document.getElementById('admin-status-filter');
   if (statusFilter) statusFilter.addEventListener('change', (e) => {

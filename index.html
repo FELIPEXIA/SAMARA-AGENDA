@@ -71,10 +71,10 @@
       <!-- Passo 1: Procedimentos Reais da Samara -->
       <section class="section-card" id="services-section">
         <div class="section-heading">
-          <div class="step-indicator">1</div>
+          <div class="step-indicator" id="step-ind-1">1</div>
           <div>
-            <h2 class="section-title">Escolha o Procedimento</h2>
-            <p class="section-desc">Tabela oficial de procedimentos, durações e valores da Samara</p>
+            <h2 class="section-title">Escolha os Procedimentos</h2>
+            <p class="section-desc">Selecione 1 ou mais procedimentos — você pode montar seu próprio combo</p>
           </div>
         </div>
 
@@ -92,6 +92,18 @@
           <button class="filter-chip" data-category="sobrancelhas" id="filter-sobrancelhas">✨ Sobrancelhas</button>
         </div>
 
+        <!-- Resumo de Selecionados no Passo 1 -->
+        <div class="selected-services-pillbar" id="selected-services-pillbar" style="display: none;">
+          <div class="pillbar-info">
+            <span class="pillbar-label" id="pillbar-summary-text">1 procedimento selecionado</span>
+            <div class="pillbar-chips" id="pillbar-chips"></div>
+          </div>
+          <div class="pillbar-actions">
+            <button type="button" class="pillbar-clear-btn" id="clear-services-btn">Limpar</button>
+            <button type="button" class="pillbar-next-btn" id="goto-step2-btn">Escolher Horário ↓</button>
+          </div>
+        </div>
+
         <!-- Grid de Serviços Reais -->
         <div class="services-grid" id="services-grid">
           <!-- Renderizado dinamicamente via app.js -->
@@ -99,16 +111,20 @@
       </section>
 
       <!-- Passo 2: Data e Horário Inteligente -->
-      <section class="section-card" id="datetime-section">
+      <section class="section-card step-locked" id="datetime-section">
         <div class="section-heading">
-          <div class="step-indicator">2</div>
+          <div class="step-indicator" id="step-ind-2">2</div>
           <div>
             <h2 class="section-title">Selecione o Dia e Horário</h2>
-            <p class="section-desc">Horários calculados automaticamente com base na duração do procedimento</p>
+            <p class="section-desc">Horários de 30 em 30 min calculados automaticamente pela duração total</p>
           </div>
         </div>
 
-        <div class="datetime-container">
+        <div class="step-lock-banner" id="step2-lock-banner">
+          <span>👆 Escolha pelo menos <strong>1 procedimento</strong> no Passo 1 para liberar o calendário e os horários.</span>
+        </div>
+
+        <div class="datetime-container" id="datetime-content">
           <!-- Calendário -->
           <div class="calendar-wrapper" id="calendar-wrapper">
             <div class="calendar-header">
@@ -136,17 +152,26 @@
       </section>
 
       <!-- Passo 3: Dados e Confirmação -->
-      <section class="section-card" id="checkout-section">
+      <section class="section-card step-locked" id="checkout-section">
         <div class="section-heading">
-          <div class="step-indicator">3</div>
+          <div class="step-indicator" id="step-ind-3">3</div>
           <div>
             <h2 class="section-title">Seus Dados e Confirmação</h2>
             <p class="section-desc">Sem pagamento antecipado obrigatório. Pagamento presencial no Studio.</p>
           </div>
         </div>
 
-        <div class="checkout-layout">
+        <div class="step-lock-banner" id="step3-lock-banner">
+          <span>👆 Escolha um <strong>horário disponível</strong> no Passo 2 para preencher seus dados e confirmar.</span>
+        </div>
+
+        <div class="checkout-layout" id="checkout-content">
           <form class="client-form" id="booking-form" onsubmit="event.preventDefault();">
+            <div class="saved-client-notice" id="saved-client-notice" style="display: none;">
+              <span>✨ Seus dados foram preenchidos automaticamente da última visita!</span>
+              <button type="button" class="clear-saved-client-btn" id="clear-saved-client-btn">Trocar dados</button>
+            </div>
+
             <div class="input-group">
               <label for="client-name">Seu Nome Completo *</label>
               <input type="text" id="client-name" placeholder="Ex: Maria Clara" required autocomplete="name">
@@ -154,7 +179,7 @@
 
             <div class="input-group">
               <label for="client-phone">Seu WhatsApp com DDD *</label>
-              <input type="tel" id="client-phone" placeholder="(11) 98765-4321" required autocomplete="tel">
+              <input type="tel" id="client-phone" placeholder="(27) 99999-9999" maxlength="15" inputmode="numeric" required autocomplete="tel">
             </div>
 
             <div class="input-group">
@@ -202,6 +227,19 @@
           </div>
         </div>
       </section>
+
+      <!-- Barra Flutuante de Progresso (Estilo iFood / Booksy) -->
+      <div class="floating-booking-bar" id="floating-booking-bar">
+        <div class="floating-bar-inner">
+          <div class="floating-bar-info">
+            <span class="floating-bar-title" id="floating-bar-title">1 procedimento</span>
+            <span class="floating-bar-meta" id="floating-bar-meta">⏱️ 1h • R$ 0,00</span>
+          </div>
+          <button type="button" class="floating-bar-btn" id="floating-bar-btn">
+            Escolher Horário ↓
+          </button>
+        </div>
+      </div>
 
     </main>
 
