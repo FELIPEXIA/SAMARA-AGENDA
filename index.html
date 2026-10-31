@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Samara Agendamento | Nails & Sobrancelhas</title>
-  <meta name="description" content="Agendamento online exclusivo para Unhas de Gel, Banho de Gel, Pé e Mão, Henna e Sobrancelhas com Samara.">
+  <title>Samara Designer | Nails & Sobrancelhas</title>
+  <meta name="description" content="Agendamento online exclusivo para Unhas de Gel, Banho de Gel, Pé e Mão, Henna e Sobrancelhas com Samara Designer.">
   
   <!-- PWA & Mobile Web App Tags -->
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/svg+xml" href="icon.svg">
-  <link rel="apple-touch-icon" href="icon.svg">
-  <meta name="theme-color" content="#0c0d12">
+  <link rel="icon" type="image/jpeg" href="samara-foto.jpg">
+  <link rel="apple-touch-icon" href="samara-foto.jpg">
+  <meta name="theme-color" content="#1b0e16">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Samara Studio">
+  <meta name="apple-mobile-web-app-title" content="Samara Designer">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,48 +22,40 @@
   <!-- Supabase CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body>
+<body data-theme="velvet-plum">
   <div class="app-wrapper">
     
-    <!-- Top Header -->
+    <!-- Top Header Unificado -->
     <header class="app-header" id="app-header">
-      <div class="header-brand">
-        <div class="brand-avatar" id="brand-avatar">SA</div>
-        <div class="brand-info">
-          <span class="brand-tag">Studio de Beleza</span>
-          <h1 class="brand-title">Samara Agendamento</h1>
+      <div class="header-main-row">
+        <div class="header-brand">
+          <div class="brand-avatar" id="brand-avatar">
+            <img src="samara-foto.jpg" alt="Samara Designer" class="brand-avatar-img" onerror="this.style.display='none'; this.parentElement.textContent='SD';">
+          </div>
+          <div class="brand-info">
+            <span class="brand-tag">✨ Studio de Beleza</span>
+            <h1 class="brand-title">Samara Designer</h1>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="nav-view-btn" id="toggle-admin-btn" title="Acessar Painel da Samara">
+            <span class="btn-icon">🔒</span>
+            <span class="btn-text" id="view-mode-label">Painel Admin</span>
+          </button>
         </div>
       </div>
-      <div class="header-actions">
-        <button class="install-pwa-btn" id="install-pwa-btn" style="display: none;" title="Instalar Aplicativo no Celular">
-          <span class="btn-icon">📲</span>
-          <span class="btn-text">Instalar App</span>
-        </button>
-        <div class="cloud-indicator" id="cloud-indicator" title="Status da Conexão">
-          <span class="cloud-dot"></span>
-          <span class="cloud-text">Supabase Conectado</span>
-        </div>
-        <button class="nav-view-btn" id="toggle-admin-btn" title="Acessar Painel da Samara">
-          <span class="btn-icon">⚡</span>
-          <span class="btn-text" id="view-mode-label">Painel Admin</span>
-        </button>
-      </div>
-    </header>
 
-    <!-- Banner de Boas-Vindas -->
-    <section class="hero-banner" id="hero-banner">
-      <div class="hero-content">
-        <div class="badge-status">
+      <!-- Faixa Integrada na Base do Card -->
+      <div class="header-footer-strip" id="brand-meta-footer">
+        <div class="badge-status header-badge-status">
           <span class="pulse-dot"></span>
-          Atendimento de Segunda a Sábado • 08:30 às 18:30
+          <span>Atendimento de Segunda a Sábado • 08:30 às 18:30</span>
         </div>
-        <div class="badge-location" style="margin-top: 8px; font-size: 13px; color: var(--primary-rose-light); opacity: 0.95;">
+        <div class="badge-location header-badge-location">
           📍 Rua Nossa Senhora das Graças, Santo Antônio, Cariacica
         </div>
-        <h2 class="hero-greeting">Reserve seu horário exclusivo</h2>
-        <p class="hero-subtitle">Escolha seu procedimento de Unhas ou Sobrancelhas, selecione o melhor horário disponível e garanta sua vaga. Pagamento presencial no Studio.</p>
       </div>
-    </section>
+    </header>
 
     <!-- VISÃO 1: FLUXO DE AGENDAMENTO (CLIENTE) -->
     <main class="client-view active" id="client-view">
@@ -74,22 +66,22 @@
           <div class="step-indicator" id="step-ind-1">1</div>
           <div>
             <h2 class="section-title">Escolha os Procedimentos</h2>
-            <p class="section-desc">Selecione 1 ou mais procedimentos — você pode montar seu próprio combo</p>
+            <p class="section-desc">Arraste para o lado e selecione 1 ou mais procedimentos</p>
           </div>
         </div>
 
         <!-- Barra de Busca Rápida Instantânea -->
-        <div class="search-bar-container">
+        <div class="search-bar-container" id="search-bar-container">
           <input type="text" id="service-search-input" class="search-input" placeholder="🔍 Buscar procedimento (ex: gel, pé, henna, banho, fibra...)" autocomplete="off">
         </div>
 
         <!-- Filtros de Categorias Reais -->
         <div class="category-filters" id="category-filters">
           <button class="filter-chip active" data-category="all" id="filter-all">Todos (24)</button>
-          <button class="filter-chip" data-category="gel" id="filter-gel">💎 Unhas de Gel</button>
-          <button class="filter-chip" data-category="combos" id="filter-combos">👑 Combos Especiais</button>
           <button class="filter-chip" data-category="tradicional" id="filter-tradicional">🌸 Pé & Mão</button>
+          <button class="filter-chip" data-category="gel" id="filter-gel">💎 Unhas de Gel</button>
           <button class="filter-chip" data-category="sobrancelhas" id="filter-sobrancelhas">✨ Sobrancelhas</button>
+          <button class="filter-chip" data-category="combos" id="filter-combos">👑 Combos Especiais</button>
         </div>
 
         <!-- Resumo de Selecionados no Passo 1 -->
@@ -104,9 +96,22 @@
           </div>
         </div>
 
-        <!-- Grid de Serviços Reais -->
-        <div class="services-grid" id="services-grid">
-          <!-- Renderizado dinamicamente via app.js -->
+        <!-- Carrossel Interativo de Serviços com Imagens -->
+        <div class="services-carousel-wrapper">
+          <div class="carousel-swipe-hint">
+            <span>👈 Arraste para o lado para navegar pelos procedimentos 👉</span>
+            <span class="carousel-counter" id="carousel-counter">1 / 9</span>
+          </div>
+
+          <div class="carousel-stage">
+            <button type="button" class="carousel-arrow prev" id="carousel-prev-btn" aria-label="Anterior">‹</button>
+            <div class="services-carousel" id="services-grid">
+              <!-- Cards do Carrossel renderizados dinamicamente via app.js -->
+            </div>
+            <button type="button" class="carousel-arrow next" id="carousel-next-btn" aria-label="Próximo">›</button>
+          </div>
+
+          <div class="carousel-dots" id="carousel-dots"></div>
         </div>
       </section>
 
@@ -248,7 +253,13 @@
       
       <div class="admin-topbar">
         <div class="admin-header-title">
-          <h2 class="admin-title">Painel de Gestão Samara Studio</h2>
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <h2 class="admin-title">Painel de Gestão Samara Designer</h2>
+            <div class="cloud-indicator" id="cloud-indicator" title="Status da Conexão">
+              <span class="cloud-dot"></span>
+              <span class="cloud-text">Supabase Conectado</span>
+            </div>
+          </div>
           <p class="admin-desc">Controle de clientes, faturamento e agenda em tempo real no Supabase</p>
         </div>
         <div class="admin-nav-tabs">
@@ -397,7 +408,7 @@
             <div class="config-grid">
               <div class="input-group">
                 <label for="cfg-studio-name">Nome do Studio</label>
-                <input type="text" id="cfg-studio-name" value="Samara Agendamento">
+                <input type="text" id="cfg-studio-name" value="Samara Designer">
               </div>
               <div class="input-group">
                 <label for="cfg-samara-whatsapp">WhatsApp da Samara (com DDD e DDI 55)</label>
@@ -538,7 +549,7 @@
     <div class="toast-container" id="toast-container"></div>
 
     <footer class="app-footer">
-      <p>© 2026 Samara Agendamento • Rua Nossa Senhora das Graças, Santo Antônio, Cariacica • WhatsApp: (27) 98845-9016</p>
+      <p>© 2026 Samara Designer • Rua Nossa Senhora das Graças, Santo Antônio, Cariacica • WhatsApp: (27) 98845-9016</p>
     </footer>
 
   </div>

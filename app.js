@@ -22,11 +22,11 @@ if (window.supabase) {
 
 // Catálogo Base (Fallback e Inicialização)
 const FALLBACK_SERVICES = [
-  { id: 'srv-pe-mao', title: 'Pé e Mão', category: 'tradicional', price: 45, durationMinutes: 120, durationLabel: '2 horas', icon: '🌸' },
-  { id: 'srv-pe', title: 'Pé', category: 'tradicional', price: 35, durationMinutes: 60, durationLabel: '1 hora', icon: '🦶' },
   { id: 'srv-mao', title: 'Mão', category: 'tradicional', price: 30, durationMinutes: 60, durationLabel: '1 hora', icon: '💅' },
-  { id: 'srv-henna', title: 'Henna', category: 'sobrancelhas', price: 35, durationMinutes: 60, durationLabel: '1 hora', icon: '✨' },
+  { id: 'srv-pe', title: 'Pé', category: 'tradicional', price: 35, durationMinutes: 60, durationLabel: '1 hora', icon: '🦶' },
+  { id: 'srv-pe-mao', title: 'Pé e Mão', category: 'tradicional', price: 45, durationMinutes: 120, durationLabel: '2 horas', icon: '🌸' },
   { id: 'srv-sobrancelhas', title: 'Sobrancelhas', category: 'sobrancelhas', price: 25, durationMinutes: 40, durationLabel: '40 minutos', icon: '👁️' },
+  { id: 'srv-henna', title: 'Henna', category: 'sobrancelhas', price: 35, durationMinutes: 60, durationLabel: '1 hora', icon: '✨' },
   { id: 'srv-unha-gel', title: 'Unha de Gel', category: 'gel', price: 120, durationMinutes: 210, durationLabel: '3h30', icon: '💎' },
   { id: 'srv-banho-gel', title: 'Banho de Gel', category: 'gel', price: 90, durationMinutes: 150, durationLabel: '2h30', icon: '🛡️' },
   { id: 'srv-esmalte-gel', title: 'Esmaltação em Gel', category: 'gel', price: 60, durationMinutes: 120, durationLabel: '2 horas', icon: '💖' },
@@ -67,12 +67,13 @@ const state = {
   clients: [],
   clientSearchQuery: '',
   activeCategory: 'all',
+  layoutMode: 'idea-b',
   adminFilter: 'all',
   isAdminView: false,
   isAdminAuthenticated: false,
   pinInput: '',
   studioConfig: {
-    name: 'Samara Agendamento',
+    name: 'Samara Designer',
     whatsapp: '5527988459016',
     address: 'Rua Nossa Senhora das Graças, Santo Antônio, Cariacica',
     pin: '1234'
@@ -111,6 +112,9 @@ function loadStudioConfig() {
   }
 
   // Garantir atualização caso tenha mantido o telefone ou endereço temporário anterior
+  if (!state.studioConfig.name || state.studioConfig.name === 'Samara Agendamento') {
+    state.studioConfig.name = 'Samara Designer';
+  }
   if (!state.studioConfig.whatsapp || state.studioConfig.whatsapp === '5511999999999' || state.studioConfig.whatsapp === '5527988721801') {
     state.studioConfig.whatsapp = '5527988459016';
   }
@@ -138,7 +142,7 @@ function saveStudioConfig() {
   const pinInput = document.getElementById('cfg-admin-pin');
 
   state.studioConfig = {
-    name: nameInput.value.trim() || 'Samara Agendamento',
+    name: nameInput.value.trim() || 'Samara Designer',
     whatsapp: waInput.value.trim().replace(/\D/g, '') || '5527988459016',
     address: addrInput.value.trim() || 'Rua Nossa Senhora das Graças, Santo Antônio, Cariacica',
     pin: pinInput.value.trim() || '1234'
@@ -334,8 +338,93 @@ function updateCloudIndicator() {
 }
 
 // -------------------------------------------------------------
-// HELPERS DE MULTI-SERVIÇOS, TELEFONE E CLIENTE RECORRENTE
+// HELPERS DE MULTI-SERVIÇOS, COMBOS AUTOMÁTICOS, IMAGENS E TELEFONE
 // -------------------------------------------------------------
+const CORE_IDEA_A_ORDER = [
+  'srv-mao',
+  'srv-pe',
+  'srv-henna',
+  'srv-sobrancelhas',
+  'srv-unha-gel',
+  'srv-banho-gel',
+  'srv-manutencao',
+  'srv-esmalte-gel',
+  'srv-pe-mao'
+];
+
+function sortServicesCustomOrder(list) {
+  const priorityMap = {};
+  CORE_IDEA_A_ORDER.forEach((id, idx) => {
+    priorityMap[id] = idx + 1;
+  });
+
+  return [...list].sort((a, b) => {
+    const isComboA = a.category === 'combos';
+    const isComboB = b.category === 'combos';
+
+    // Deixar todos os combos sempre para o final
+    if (isComboA && !isComboB) return 1;
+    if (!isComboA && isComboB) return -1;
+
+    const prioA = priorityMap[a.id] || 50;
+    const prioB = priorityMap[b.id] || 50;
+    if (prioA !== prioB) return prioA - prioB;
+
+    return Number(a.price || 0) - Number(b.price || 0);
+  });
+}
+
+// Mapa de combinações automáticas para aplicar o preço/tempo oficial dos Combos da Samara
+const COMBO_EQUIVALENTS = {
+  'srv-mao+srv-pe': 'srv-pe-mao',
+  'srv-henna+srv-pe-mao': 'srv-pe-mao-henna',
+  'srv-henna+srv-mao+srv-pe': 'srv-pe-mao-henna',
+  'srv-pe-mao+srv-sobrancelhas': 'srv-pe-mao-sobrancelhas',
+  'srv-mao+srv-pe+srv-sobrancelhas': 'srv-pe-mao-sobrancelhas',
+  'srv-henna+srv-pe': 'srv-pe-henna',
+  'srv-pe+srv-sobrancelhas': 'srv-pe-sobrancelhas',
+  'srv-henna+srv-mao': 'srv-mao-henna',
+  'srv-mao+srv-sobrancelhas': 'srv-mao-sobrancelhas',
+  'srv-pe+srv-unha-gel': 'srv-unha-gel-pe',
+  'srv-sobrancelhas+srv-unha-gel': 'srv-unha-gel-sobrancelhas',
+  'srv-henna+srv-unha-gel': 'srv-unha-gel-henna',
+  'srv-banho-gel+srv-pe': 'srv-banho-gel-pe',
+  'srv-banho-gel+srv-henna': 'srv-banho-gel-henna',
+  'srv-banho-gel+srv-sobrancelhas': 'srv-banho-gel-sobrancelhas',
+  'srv-esmalte-gel+srv-henna': 'srv-esmalte-gel-henna',
+  'srv-esmalte-gel+srv-sobrancelhas': 'srv-esmalte-gel-sobrancelhas',
+  'srv-henna+srv-manutencao': 'srv-manutencao-henna'
+};
+
+function getServiceImage(serviceId) {
+  const id = String(serviceId || '');
+  if (id === 'srv-mao' || id.startsWith('srv-mao-')) return 'assets/services/mao.jpg';
+  if (id === 'srv-pe' || id === 'srv-pe-henna' || id === 'srv-pe-sobrancelhas') return 'assets/services/pe.jpg';
+  if (id.startsWith('srv-pe-mao')) return 'assets/services/pe-mao.jpg';
+  if (id.startsWith('srv-unha-gel')) return 'assets/services/unha-gel.jpg';
+  if (id.startsWith('srv-banho-gel')) return 'assets/services/banho-gel.jpg';
+  if (id.startsWith('srv-esmalte-gel')) return 'assets/services/esmalte-gel.jpg';
+  if (id.startsWith('srv-manutencao')) return 'assets/services/manutencao.jpg';
+  if (id === 'srv-henna') return 'assets/services/henna.jpg';
+  if (id === 'srv-sobrancelhas') return 'assets/services/sobrancelhas.jpg';
+  return 'samara-foto.jpg';
+}
+
+function getServiceDescription(service) {
+  const map = {
+    'srv-mao': 'Cutilagem delicada, hidratação e esmaltação impecável nas mãos.',
+    'srv-pe': 'Cuidado relaxante de pedicure, cutilagem macia e unhas perfeitas.',
+    'srv-pe-mao': 'Cuidado completo de manicure e pedicure tradicional no studio.',
+    'srv-sobrancelhas': 'Design personalizado valorizando a simetria e leveza do seu olhar.',
+    'srv-henna': 'Design de sobrancelhas com aplicação de henna para definição marcante.',
+    'srv-esmalte-gel': 'Esmaltação em gel com secagem em cabine e brilho intenso duradouro.',
+    'srv-banho-gel': 'Camada protetora de gel sobre suas unhas naturais para força e brilho.',
+    'srv-unha-gel': 'Alongamento em gel resistente, natural e com acabamento de luxo.',
+    'srv-manutencao': 'Renovação completa do seu alongamento com nivelamento e brilho novo.'
+  };
+  return map[service.id] || `Combo especial Samara Designer (${service.durationLabel}).`;
+}
+
 function formatDurationLabel(totalMinutes) {
   if (!totalMinutes || totalMinutes <= 0) return '-';
   const hours = Math.floor(totalMinutes / 60);
@@ -349,6 +438,25 @@ function getSelectedSummary() {
   if (!state.selectedServices || state.selectedServices.length === 0) {
     return null;
   }
+
+  // Verificar se a combinação escolhida equivale a um Combo Oficial da Samara
+  const sortedKey = state.selectedServices.map(s => s.id).sort().join('+');
+  const matchedComboId = COMBO_EQUIVALENTS[sortedKey];
+  if (matchedComboId) {
+    const officialCombo = state.services.find(s => s.id === matchedComboId);
+    if (officialCombo) {
+      return {
+        id: officialCombo.id,
+        title: officialCombo.title,
+        price: Number(officialCombo.price),
+        durationMinutes: Number(officialCombo.durationMinutes),
+        durationLabel: officialCombo.durationLabel,
+        count: state.selectedServices.length,
+        isAutoCombo: true
+      };
+    }
+  }
+
   const totalPrice = state.selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0);
   const totalDuration = state.selectedServices.reduce((sum, s) => sum + Number(s.durationMinutes || 60), 0);
   const combinedTitle = state.selectedServices.map(s => s.title).join(' + ');
@@ -362,7 +470,8 @@ function getSelectedSummary() {
     price: totalPrice,
     durationMinutes: totalDuration,
     durationLabel: durationLabel,
-    count: state.selectedServices.length
+    count: state.selectedServices.length,
+    isAutoCombo: false
   };
 }
 
@@ -408,55 +517,71 @@ function clearSavedClientProfile() {
 }
 
 // -------------------------------------------------------------
-// RENDERIZAÇÃO DE SERVIÇOS (SELEÇÃO ÚNICA OU MÚLTIPLA)
+// RENDERIZAÇÃO DO CARROSSEL INTERATIVO DE SERVIÇOS (IDEIA A & B)
 // -------------------------------------------------------------
 function renderServices() {
   const grid = document.getElementById('services-grid');
+  const dotsContainer = document.getElementById('carousel-dots');
+  const counterEl = document.getElementById('carousel-counter');
+
+  if (!grid) return;
   grid.innerHTML = '';
 
-  let filtered = state.activeCategory === 'all'
-    ? state.services
-    : state.services.filter(s => s.category === state.activeCategory);
+  // Se houver termo de busca digitado, pesquisa em todos os 24 procedimentos independente da aba ativa
+  let filtered = state.serviceSearchQuery
+    ? state.services.filter(s => {
+        const q = state.serviceSearchQuery.toLowerCase();
+        return s.title.toLowerCase().includes(q) || (s.category && s.category.toLowerCase().includes(q));
+      })
+    : (state.activeCategory === 'all'
+        ? state.services
+        : state.services.filter(s => s.category === state.activeCategory));
 
-  if (state.serviceSearchQuery) {
-    const q = state.serviceSearchQuery.toLowerCase();
-    filtered = filtered.filter(s => 
-      s.title.toLowerCase().includes(q) || 
-      (s.category && s.category.toLowerCase().includes(q))
-    );
-  }
+  // Aplicar a sequência oficial: Mão, Pé, Henna, Sobrancelhas, Unha de Gel, Banho de Gel, Manutenção... e Combos no final
+  filtered = sortServicesCustomOrder(filtered);
 
   if (filtered.length === 0) {
-    grid.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: var(--text-faint); padding: 36px;">Nenhum procedimento encontrado com o termo "${state.serviceSearchQuery}".</p>`;
+    grid.innerHTML = `<p style="width: 100%; text-align: center; color: var(--text-faint); padding: 36px;">Nenhum procedimento encontrado com o termo "${state.serviceSearchQuery}".</p>`;
+    if (dotsContainer) dotsContainer.innerHTML = '';
+    if (counterEl) counterEl.textContent = '0 / 0';
     renderSelectedServicesPillbar();
     return;
   }
 
-  filtered.forEach(service => {
+  const categoryNames = {
+    tradicional: 'Pé & Mão Tradicional',
+    sobrancelhas: 'Sobrancelhas & Henna',
+    gel: 'Alongamento & Gel',
+    combos: 'Combo Especial'
+  };
+
+  filtered.forEach((service, index) => {
     const isSelected = state.selectedServices.some(s => s.id === service.id);
     const card = document.createElement('article');
-    card.className = `service-card ${isSelected ? 'selected' : ''}`;
+    card.className = `carousel-card ${isSelected ? 'selected' : ''}`;
     card.id = `service-${service.id}`;
+    card.dataset.index = index;
     card.tabIndex = 0;
 
-    const categoryNames = {
-      tradicional: 'Pé & Mão Tradicional',
-      sobrancelhas: 'Sobrancelhas & Henna',
-      gel: 'Alongamento & Gel',
-      combos: 'Combo Especial'
-    };
+    const imgUrl = getServiceImage(service.id);
+    const desc = getServiceDescription(service);
 
     card.innerHTML = `
-      <div>
-        <div class="service-header-top">
-          <div class="service-icon-badge">${service.icon}</div>
-          <h3 class="service-title">${service.title}</h3>
-        </div>
-        <p class="service-category-tag">${categoryNames[service.category] || service.category}</p>
+      <div class="carousel-card-media">
+        <span class="carousel-card-cat">${service.icon} ${categoryNames[service.category] || service.category}</span>
+        ${isSelected ? `<span class="carousel-card-check">✓ Selecionado</span>` : ''}
+        <img src="${imgUrl}" alt="${service.title}" class="carousel-card-img" loading="lazy" onerror="this.src='samara-foto.jpg'">
       </div>
-      <div class="service-footer">
-        <span class="service-duration">⏱️ ${service.durationLabel}</span>
-        <span class="service-price">R$ ${service.price.toFixed(2).replace('.', ',')}</span>
+      <div class="carousel-card-body">
+        <h3 class="carousel-card-title">${service.title}</h3>
+        <p class="carousel-card-desc">${desc}</p>
+        <div class="carousel-card-meta">
+          <span class="carousel-card-duration">⏱️ ${service.durationLabel}</span>
+          <span class="carousel-card-price">R$ ${service.price.toFixed(2).replace('.', ',')}</span>
+        </div>
+        <button type="button" class="carousel-select-btn">
+          ${isSelected ? '✓ Procedimento Selecionado' : '+ Selecionar Procedimento'}
+        </button>
       </div>
     `;
 
@@ -470,6 +595,26 @@ function renderServices() {
 
     grid.appendChild(card);
   });
+
+  if (counterEl) {
+    counterEl.textContent = `1 / ${filtered.length}`;
+  }
+
+  if (dotsContainer) {
+    dotsContainer.innerHTML = filtered.map((srv, idx) => `
+      <button type="button" class="carousel-dot ${idx === 0 ? 'active' : ''}" data-idx="${idx}" aria-label="Ir para ${srv.title}"></button>
+    `).join('');
+
+    dotsContainer.querySelectorAll('.carousel-dot').forEach(dot => {
+      dot.addEventListener('click', () => {
+        const idx = Number(dot.dataset.idx);
+        const targetCard = grid.children[idx];
+        if (targetCard) {
+          targetCard.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        }
+      });
+    });
+  }
 
   renderSelectedServicesPillbar();
 }
@@ -488,8 +633,8 @@ function renderSelectedServicesPillbar() {
   }
 
   pillbar.style.display = 'flex';
-  const labelCount = summary.count === 1 ? '1 procedimento selecionado' : `${summary.count} procedimentos combinados`;
-  summaryText.textContent = `${labelCount} • ⏱️ ${summary.durationLabel} • R$ ${summary.price.toFixed(2).replace('.', ',')}`;
+  const comboTag = summary.isAutoCombo ? `👑 Combo "${summary.title}" aplicado!` : (summary.count === 1 ? '1 procedimento selecionado' : `${summary.count} procedimentos combinados`);
+  summaryText.textContent = `${comboTag} • ⏱️ ${summary.durationLabel} • R$ ${summary.price.toFixed(2).replace('.', ',')}`;
 
   chipsContainer.innerHTML = state.selectedServices.map(srv => `
     <span class="selected-srv-chip">
@@ -1537,6 +1682,85 @@ function setupEventListeners() {
       chip.classList.add('active');
       state.activeCategory = chip.dataset.category;
       renderServices();
+      const grid = document.getElementById('services-grid');
+      if (grid) grid.scrollTo({ left: 0, behavior: 'smooth' });
+    });
+  });
+
+  // Alternar entre Ideia A (9 Serviços + Combos Automáticos) e Ideia B (Carrossel por Categorias)
+  const modeBtns = document.querySelectorAll('.layout-mode-btn');
+  modeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      modeBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.layoutMode = btn.dataset.mode;
+      renderServices();
+      const grid = document.getElementById('services-grid');
+      if (grid) grid.scrollTo({ left: 0, behavior: 'smooth' });
+      showToast(state.layoutMode === 'idea-a'
+        ? '🌟 Testando Ideia A: 9 Serviços com Foto (Combos automáticos)'
+        : '🗂️ Testando Ideia B: Carrossel dividido por Categorias');
+    });
+  });
+
+  // Setas e Indicador de Scroll do Carrossel
+  const carouselGrid = document.getElementById('services-grid');
+  const prevCarouselBtn = document.getElementById('carousel-prev-btn');
+  const nextCarouselBtn = document.getElementById('carousel-next-btn');
+
+  if (prevCarouselBtn && carouselGrid) {
+    prevCarouselBtn.addEventListener('click', () => {
+      carouselGrid.scrollBy({ left: -318, behavior: 'smooth' });
+    });
+  }
+
+  if (nextCarouselBtn && carouselGrid) {
+    nextCarouselBtn.addEventListener('click', () => {
+      carouselGrid.scrollBy({ left: 318, behavior: 'smooth' });
+    });
+  }
+
+  if (carouselGrid) {
+    carouselGrid.addEventListener('scroll', () => {
+      const cards = Array.from(carouselGrid.children);
+      if (cards.length === 0) return;
+      const gridCenter = carouselGrid.scrollLeft + carouselGrid.clientWidth / 2;
+      let closestIdx = 0;
+      let minDistance = Infinity;
+
+      cards.forEach((card, idx) => {
+        const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+        const dist = Math.abs(gridCenter - cardCenter);
+        if (dist < minDistance) {
+          minDistance = dist;
+          closestIdx = idx;
+        }
+      });
+
+      const counterEl = document.getElementById('carousel-counter');
+      if (counterEl) {
+        counterEl.textContent = `${closestIdx + 1} / ${cards.length}`;
+      }
+
+      const dots = document.querySelectorAll('.carousel-dot');
+      dots.forEach((dot, idx) => {
+        dot.classList.toggle('active', idx === closestIdx);
+      });
+    }, { passive: true });
+  }
+
+  // Alternar Posição do Atendimento/Endereço no Card do Topo (Opção 1 vs Opção 2)
+  const headerChips = document.querySelectorAll('[data-header-layout]');
+  headerChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      headerChips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      const layoutChoice = chip.dataset.headerLayout;
+      const appHeader = document.getElementById('app-header');
+      if (appHeader) {
+        appHeader.setAttribute('data-header-style', layoutChoice);
+      }
+      showToast(`✨ Visual aplicado: ${chip.textContent.trim()}`);
     });
   });
 

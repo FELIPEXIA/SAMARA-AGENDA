@@ -1,11 +1,21 @@
-const CACHE_NAME = 'samara-studio-v2';
+const CACHE_NAME = 'samara-studio-v4';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './style.css',
   './app.js',
   './manifest.json',
-  './icon.svg'
+  './icon.svg',
+  './samara-foto.jpg',
+  './assets/services/mao.jpg',
+  './assets/services/pe.jpg',
+  './assets/services/pe-mao.jpg',
+  './assets/services/unha-gel.jpg',
+  './assets/services/banho-gel.jpg',
+  './assets/services/esmalte-gel.jpg',
+  './assets/services/manutencao.jpg',
+  './assets/services/sobrancelhas.jpg',
+  './assets/services/henna.jpg'
 ];
 
 // Instalação: Cache dos arquivos estáticos essenciais
