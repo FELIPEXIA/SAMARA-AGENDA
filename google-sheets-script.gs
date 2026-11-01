@@ -68,7 +68,9 @@ function doGet(e) {
         if (sheetName.indexOf(mName) !== -1 || sheetName.indexOf(mName.replace('Ç', 'C')) !== -1) {
           foundMonthIdx = m;
           const yearMatch = sheetName.match(/20\d{2}/);
-          foundYear = yearMatch ? parseInt(yearMatch[0], 10) : new Date().getFullYear();
+          if (!yearMatch) break; // Ignorar abas antigas sem ano no nome (ex: "DEZEMBRO" de 2025)
+          foundYear = parseInt(yearMatch[0], 10);
+          if (foundYear < 2026) break;
           break;
         }
       }

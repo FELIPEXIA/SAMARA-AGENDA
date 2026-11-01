@@ -298,6 +298,9 @@
 
       <!-- Aba 1: Tabela de Agendamentos -->
       <section class="admin-tab-content active" id="admin-content-agenda">
+        <!-- Destaque Fixo de Solicitações Aguardando Resposta -->
+        <div id="admin-pending-spotlight" style="display: none; margin-bottom: 18px;"></div>
+
         <div class="admin-table-container">
           <div class="admin-table-header">
             <h3 class="table-title">Lista de Agendamentos</h3>
@@ -306,13 +309,17 @@
                 <span>➕</span> Novo Agendamento
               </button>
               <select id="admin-date-filter" class="custom-select">
-                <option value="all">Todas as Datas</option>
-                <option value="today">Apenas Hoje</option>
-                <option value="tomorrow">Amanhã</option>
+                <option value="week" selected>📅 Esta Semana</option>
+                <option value="today">📌 Apenas Hoje</option>
+                <option value="tomorrow">☀️ Amanhã</option>
+                <option value="next15">🗓️ Próximos 15 Dias</option>
+                <option value="month">📆 Mês Atual</option>
+                <option value="all">🗂️ Todas as Datas</option>
               </select>
               <select id="admin-status-filter" class="custom-select">
                 <option value="all">Todos os Status</option>
                 <option value="Aguardando">⏳ Aguardando (Site)</option>
+                <option value="site-only">🌐 Só Pedidos do Site</option>
                 <option value="Confirmado">🟢 Confirmados</option>
                 <option value="Rejeitado">🔵 Rejeitados</option>
                 <option value="Cancelado">🔴 Cancelados</option>
