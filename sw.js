@@ -1,9 +1,10 @@
-const CACHE_NAME = 'samara-studio-v4';
+const CACHE_NAME = 'samara-studio-v5';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './style.css',
   './app.js',
+  './google-sheets-script.gs',
   './manifest.json',
   './icon.svg',
   './samara-foto.jpg',
@@ -50,8 +51,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
 
-  // Não interferir com chamadas diretas ao Supabase
-  if (requestUrl.hostname.includes('supabase.co')) {
+  // Não interferir com chamadas diretas ao Supabase ou Google Apps Script (Planilha)
+  if (
+    requestUrl.hostname.includes('supabase.co') ||
+    requestUrl.hostname.includes('script.google.com') ||
+    requestUrl.hostname.includes('googleusercontent.com')
+  ) {
     return;
   }
 

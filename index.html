@@ -49,7 +49,7 @@
       <div class="header-footer-strip" id="brand-meta-footer">
         <div class="badge-status header-badge-status">
           <span class="pulse-dot"></span>
-          <span>Atendimento de Segunda a Sábado • 08:30 às 18:30</span>
+          <span>Atendimento de Segunda a Sábado • 07:00 às 18:30</span>
         </div>
         <div class="badge-location header-badge-location">
           📍 Rua Nossa Senhora das Graças, Santo Antônio, Cariacica
@@ -312,12 +312,14 @@
               </select>
               <select id="admin-status-filter" class="custom-select">
                 <option value="all">Todos os Status</option>
+                <option value="Aguardando">Aguardando (Site)</option>
                 <option value="Confirmado">Confirmados</option>
                 <option value="Concluído">Concluídos</option>
                 <option value="Cancelado">Cancelados</option>
               </select>
-              <button class="btn-refresh" id="btn-export-csv" title="Exportar para Excel / CSV">📊 Baixar Planilha</button>
-              <button class="btn-refresh" id="btn-refresh-agenda" title="Recarregar dados">🔄 Atualizar</button>
+              <a href="https://docs.google.com/spreadsheets/d/1QojXTSpQl6D4jp3_CG6aDKYOb-vlukehjpfrN0kNgCY/edit?gid=653704266#gid=653704266" target="_blank" class="btn-refresh" style="text-decoration: none;" title="Abrir Planilha Google Oficial da Samara">📗 Abrir Planilha Google</a>
+              <button class="btn-refresh" id="btn-export-csv" title="Exportar para Excel / CSV">📊 Baixar CSV</button>
+              <button class="btn-refresh" id="btn-refresh-agenda" title="Recarregar e sincronizar dados com Supabase e Planilha">🔄 Sincronizar</button>
             </div>
           </div>
 
@@ -422,11 +424,36 @@
                 <label for="cfg-admin-pin">PIN de 4 Dígitos do Painel Admin</label>
                 <input type="password" maxlength="4" id="cfg-admin-pin" value="1234">
               </div>
+              <div class="input-group">
+                <label for="cfg-default-sheet-status">Status Inicial na Planilha ao Agendar pelo Site</label>
+                <select id="cfg-default-sheet-status" class="custom-select" style="width: 100%;">
+                  <option value="Aguardando">aguardando (Samara confirma depois)</option>
+                  <option value="Confirmado">confirmado (já entra confirmado)</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label for="cfg-sheets-webhook-url">URL do Conector Google Planilhas (Apps Script)</label>
+                <input type="url" id="cfg-sheets-webhook-url" placeholder="https://script.google.com/macros/s/.../exec">
+              </div>
             </div>
-            <div style="margin-top: 20px; display: flex; gap: 12px;">
-              <button class="confirm-btn" style="max-width: 200px;" id="btn-save-config">Salvar Configurações</button>
+            <div style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
+              <button class="confirm-btn" style="max-width: 220px;" id="btn-save-config">Salvar Configurações</button>
+              <button type="button" class="btn-refresh" id="btn-test-sheets-sync">🧪 Testar Sincronização com Planilha</button>
+              <button type="button" class="btn-refresh" id="btn-copy-apps-script">📋 Copiar Código para Google Planilhas</button>
             </div>
           </form>
+
+          <!-- Passo a Passo Rápido para Conectar a Planilha da Samara -->
+          <div style="margin-top: 28px; padding: 18px 20px; border-radius: 16px; background: rgba(244, 114, 182, 0.08); border: 1px solid rgba(244, 114, 182, 0.25);">
+            <h4 class="table-title" style="font-size: 1rem; margin-bottom: 8px;">📗 Como ativar a escrita automática na Planilha da Samara (1 minuto)</h4>
+            <ol style="font-size: 13px; color: var(--text-muted); padding-left: 18px; display: flex; flex-direction: column; gap: 6px;">
+              <li>Clique no botão <strong>📋 Copiar Código para Google Planilhas</strong> acima.</li>
+              <li>Abra a <a href="https://docs.google.com/spreadsheets/d/1QojXTSpQl6D4jp3_CG6aDKYOb-vlukehjpfrN0kNgCY/edit?gid=653704266#gid=653704266" target="_blank" style="color: var(--primary-rose-light); font-weight: 700;">Planilha de Agendamento da Samara</a> e no menu do topo clique em <strong>Extensões → Apps Script</strong>.</li>
+              <li>Apague o texto que estiver lá, cole o código copiado e clique no ícone de <strong>Salvar (💾)</strong>.</li>
+              <li>No canto superior direito, clique em <strong>Implantar → Nova implantação</strong>, escolha o tipo <strong>App da Web</strong> e em <em>"Quem pode acessar"</em> selecione <strong>Qualquer pessoa</strong>.</li>
+              <li>Copie a <strong>URL do App da Web</strong> gerada, cole no campo acima e clique em <strong>Salvar Configurações</strong>!</li>
+            </ol>
+          </div>
         </div>
       </section>
 

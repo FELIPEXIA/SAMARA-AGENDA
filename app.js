@@ -20,7 +20,11 @@ if (window.supabase) {
   }
 }
 
-// Catálogo Base (Fallback e Inicialização)
+// ID Oficial da Planilha Google da Samara
+const SAMARA_SPREADSHEET_ID = '1QojXTSpQl6D4jp3_CG6aDKYOb-vlukehjpfrN0kNgCY';
+const SAMARA_WEEKDAYS = ['Dom', 'Seg', 'Terc', 'Quart', 'Quint', 'Sext', 'Sab'];
+
+// Catálogo Base (Fallback e Inicialização + Combos da Planilha da Samara)
 const FALLBACK_SERVICES = [
   { id: 'srv-mao', title: 'Mão', category: 'tradicional', price: 30, durationMinutes: 60, durationLabel: '1 hora', icon: '💅' },
   { id: 'srv-pe', title: 'Pé', category: 'tradicional', price: 35, durationMinutes: 60, durationLabel: '1 hora', icon: '🦶' },
@@ -45,7 +49,58 @@ const FALLBACK_SERVICES = [
   { id: 'srv-banho-gel-sobrancelhas', title: 'Banho de Gel e Sobrancelhas', category: 'combos', price: 160, durationMinutes: 210, durationLabel: '3h30', icon: '💎' },
   { id: 'srv-esmalte-gel-henna', title: 'Esmaltação em Gel e Henna', category: 'combos', price: 95, durationMinutes: 180, durationLabel: '3 horas', icon: '✨' },
   { id: 'srv-esmalte-gel-sobrancelhas', title: 'Esmaltação em Gel e Sobrancelhas', category: 'combos', price: 85, durationMinutes: 180, durationLabel: '3 horas', icon: '✨' },
-  { id: 'srv-manutencao-henna', title: 'Manutenção e Henna', category: 'combos', price: 125, durationMinutes: 240, durationLabel: '4 horas', icon: '👑' }
+  { id: 'srv-manutencao-pe', title: 'Manutenção pé', category: 'combos', price: 125, durationMinutes: 210, durationLabel: '3h30', icon: '🛠️' },
+  { id: 'srv-manutencao-henna', title: 'Manutenção e Henna', category: 'combos', price: 125, durationMinutes: 240, durationLabel: '4 horas', icon: '👑' },
+  { id: 'srv-manutencao-pe-sobrancelhas', title: 'Manutenção Pé e Sobrancelhas', category: 'combos', price: 150, durationMinutes: 240, durationLabel: '4 horas', icon: '👑' },
+  { id: 'srv-manutencao-pe-henna', title: 'Manutenção Pé e Henna', category: 'combos', price: 160, durationMinutes: 240, durationLabel: '4 horas', icon: '👑' }
+];
+
+// Agendamentos Reais da Planilha da Samara (Abas NOVEMBRO 2026 e DEZEMBRO 2026) sincronizados via Google Sheets
+const INITIAL_SHEET_BOOKINGS_NOV_2026 = [
+  // NOVEMBRO 2026
+  { id: 'sheet-20261102-0700', date: '2026-11-02', time: '07:00', endTime: '10:30', clientName: 'barbara', clientPhone: 'Planilha Google', serviceId: 'srv-manutencao-pe', serviceTitle: 'Manutenção pé', price: 125, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261103-0700', date: '2026-11-03', time: '07:00', endTime: '10:30', clientName: 'odete', clientPhone: 'Planilha Google', serviceId: 'srv-manutencao-pe', serviceTitle: 'Manutenção pé', price: 125, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261103-1300', date: '2026-11-03', time: '13:00', endTime: '16:30', clientName: 'jhenifer', clientPhone: 'Planilha Google', serviceId: 'srv-unha-gel', serviceTitle: 'Unha de Gel', price: 120, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261104-0700', date: '2026-11-04', time: '07:00', endTime: '08:00', clientName: 'Ana', clientPhone: 'Planilha Google', serviceId: 'srv-pe', serviceTitle: 'Pé', price: 35, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261104-0800', date: '2026-11-04', time: '08:00', endTime: '10:00', clientName: 'Andressa', clientPhone: 'Planilha Google', serviceId: 'srv-pe-mao', serviceTitle: 'Pé e Mão', price: 45, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261105-0700', date: '2026-11-05', time: '07:00', endTime: '10:00', clientName: 'odete', clientPhone: 'Planilha Google', serviceId: 'srv-manutencao', serviceTitle: 'Manutenção', price: 90, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261105-1400', date: '2026-11-05', time: '14:00', endTime: '15:30', clientName: 'academia', clientPhone: 'Compromisso Samara', serviceId: 'srv-mao', serviceTitle: 'Compromisso (academia)', price: 0, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261106-0700', date: '2026-11-06', time: '07:00', endTime: '11:00', clientName: 'graça', clientPhone: 'Planilha Google', serviceId: 'srv-unha-gel-pe', serviceTitle: 'Unha de Gel e Pé', price: 90, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261106-1330', date: '2026-11-06', time: '13:30', endTime: '15:30', clientName: 'tereza', clientPhone: 'Planilha Google', serviceId: 'srv-pe-henna', serviceTitle: 'Pé Henna', price: 70, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261107-0700', date: '2026-11-07', time: '07:00', endTime: '08:30', clientName: 'academia', clientPhone: 'Compromisso Samara', serviceId: 'srv-mao', serviceTitle: 'Compromisso (academia)', price: 0, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261107-0930', date: '2026-11-07', time: '09:30', endTime: '11:30', clientName: 'ketely', clientPhone: 'Planilha Google', serviceId: 'srv-pe-mao', serviceTitle: 'Pé e Mão', price: 45, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261110-0600', date: '2026-11-10', time: '06:00', endTime: '09:00', clientName: 'Mari', clientPhone: 'Planilha Google', serviceId: 'srv-manutencao', serviceTitle: 'Manutenção', price: 90, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261110-1300', date: '2026-11-10', time: '13:00', endTime: '16:00', clientName: 'Marly', clientPhone: 'Planilha Google', serviceId: 'srv-manutencao', serviceTitle: 'Manutenção', price: 90, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261111-1300', date: '2026-11-11', time: '13:00', endTime: '16:00', clientName: 'yasmin', clientPhone: 'Planilha Google', serviceId: 'srv-manutencao', serviceTitle: 'Manutenção', price: 90, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261112-0800', date: '2026-11-12', time: '08:00', endTime: '09:00', clientName: 'kemely', clientPhone: 'Planilha Google', serviceId: 'srv-henna', serviceTitle: 'Henna', price: 35, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261112-1300', date: '2026-11-12', time: '13:00', endTime: '16:00', clientName: 'karla', clientPhone: 'Planilha Google', serviceId: 'srv-manutencao', serviceTitle: 'Manutenção', price: 90, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261113-0800', date: '2026-11-13', time: '08:00', endTime: '10:00', clientName: 'kemely', clientPhone: 'Planilha Google', serviceId: 'srv-pe-mao', serviceTitle: 'Pé e Mão', price: 45, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261114-0700', date: '2026-11-14', time: '07:00', endTime: '10:30', clientName: 'japa', clientPhone: 'Planilha Google', serviceId: 'srv-manutencao-pe', serviceTitle: 'Manutenção pé', price: 120, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261116-0630', date: '2026-11-16', time: '06:30', endTime: '09:00', clientName: 'jerusa', clientPhone: 'Planilha Google', serviceId: 'srv-esmalte-gel', serviceTitle: 'Esmaltação em Gel Pé', price: 90, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261116-1300', date: '2026-11-16', time: '13:00', endTime: '14:00', clientName: 'ciene', clientPhone: 'Planilha Google', serviceId: 'srv-pe', serviceTitle: 'Pé', price: 35, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261117-0930', date: '2026-11-17', time: '09:30', endTime: '11:30', clientName: 'Silvana', clientPhone: 'Planilha Google', serviceId: 'srv-pe-mao', serviceTitle: 'Pé e Mão', price: 45, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261118-0700', date: '2026-11-18', time: '07:00', endTime: '10:30', clientName: 'sandra', clientPhone: 'Planilha Google', serviceId: 'srv-manutencao-pe', serviceTitle: 'Manutenção pé', price: 125, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261121-0600', date: '2026-11-21', time: '06:00', endTime: '10:00', clientName: 'manu', clientPhone: 'Planilha Google', serviceId: 'srv-manutencao-pe-henna', serviceTitle: 'Manutenção Pé e Henna', price: 145, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261123-1600', date: '2026-11-23', time: '16:00', endTime: '19:00', clientName: 'michele', clientPhone: 'Planilha Google', serviceId: 'srv-manutencao', serviceTitle: 'Manutenção', price: 90, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261124-1300', date: '2026-11-24', time: '13:00', endTime: '16:00', clientName: 'Aline', clientPhone: 'Planilha Google', serviceId: 'srv-manutencao', serviceTitle: 'Manutenção', price: 90, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261125-0630', date: '2026-11-25', time: '06:30', endTime: '10:30', clientName: 'ana', clientPhone: 'Planilha Google', serviceId: 'srv-manutencao-pe-sobrancelhas', serviceTitle: 'Manutenção Pé e Sobrancelhas', price: 135, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261126-0630', date: '2026-11-26', time: '06:30', endTime: '10:30', clientName: 'ana', clientPhone: 'Planilha Google', serviceId: 'srv-manutencao-pe-sobrancelhas', serviceTitle: 'Manutenção Pé e Sobrancelhas', price: 135, status: 'Confirmado', source: 'google_sheets' },
+  // DEZEMBRO 2026
+  { id: 'sheet-20261201-0800', date: '2026-12-01', time: '08:00', endTime: '09:00', clientName: 'kemely', clientPhone: 'Planilha Google', serviceId: 'srv-henna', serviceTitle: 'Henna', price: 35, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261204-0630', date: '2026-12-04', time: '06:30', endTime: '09:30', clientName: 'Ana', clientPhone: 'Planilha Google', serviceId: 'srv-pe-mao-sobrancelhas', serviceTitle: 'Pé e Mão Sobrancelhas', price: 70, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261209-0630', date: '2026-12-09', time: '06:30', endTime: '09:30', clientName: 'kamily', clientPhone: 'Planilha Google', serviceId: 'srv-manutencao', serviceTitle: 'Manutenção', price: 90, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261218-1300', date: '2026-12-18', time: '13:00', endTime: '16:00', clientName: 'aline', clientPhone: 'Planilha Google', serviceId: 'srv-manutencao', serviceTitle: 'Manutenção', price: 90, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261221-0700', date: '2026-12-21', time: '07:00', endTime: '10:00', clientName: 'Aline', clientPhone: 'Planilha Google', serviceId: 'srv-manutencao', serviceTitle: 'Manutenção', price: 90, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261221-1530', date: '2026-12-21', time: '15:30', endTime: '17:00', clientName: 'hemely', clientPhone: 'Planilha Google', serviceId: 'srv-pe-sobrancelhas', serviceTitle: 'Pé Sobrancelhas', price: 60, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261222-0700', date: '2026-12-22', time: '07:00', endTime: '10:00', clientName: 'ketely', clientPhone: 'Planilha Google', serviceId: 'srv-pe-mao-henna', serviceTitle: 'Pé e Mão Henna', price: 80, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261222-1300', date: '2026-12-22', time: '13:00', endTime: '14:00', clientName: 'kamily', clientPhone: 'Planilha Google', serviceId: 'srv-henna', serviceTitle: 'Henna', price: 35, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261222-1400', date: '2026-12-22', time: '14:00', endTime: '16:00', clientName: 'silvana', clientPhone: 'Planilha Google', serviceId: 'srv-pe-mao', serviceTitle: 'Pé e Mão', price: 45, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261222-1730', date: '2026-12-22', time: '17:30', endTime: '19:30', clientName: 'Francisca', clientPhone: 'Planilha Google', serviceId: 'srv-pe-mao', serviceTitle: 'Pé e Mão', price: 45, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261223-0630', date: '2026-12-23', time: '06:30', endTime: '08:30', clientName: 'Keyla', clientPhone: 'Planilha Google', serviceId: 'srv-pe-mao', serviceTitle: 'Pé e Mão', price: 45, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261223-0830', date: '2026-12-23', time: '08:30', endTime: '09:30', clientName: 'kemely', clientPhone: 'Planilha Google', serviceId: 'srv-henna', serviceTitle: 'Henna', price: 35, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261224-0630', date: '2026-12-24', time: '06:30', endTime: '07:30', clientName: 'Keyla', clientPhone: 'Planilha Google', serviceId: 'srv-henna', serviceTitle: 'Henna', price: 35, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261224-0830', date: '2026-12-24', time: '08:30', endTime: '10:30', clientName: 'kemely', clientPhone: 'Planilha Google', serviceId: 'srv-pe-mao', serviceTitle: 'Pé e Mão', price: 45, status: 'Confirmado', source: 'google_sheets' },
+  { id: 'sheet-20261229-1730', date: '2026-12-29', time: '17:30', endTime: '20:30', clientName: 'Francisca', clientPhone: 'Planilha Google', serviceId: 'srv-pe-mao-sobrancelhas', serviceTitle: 'Pé e Mão Sobrancelhas', price: 70, status: 'Confirmado', source: 'google_sheets' }
 ];
 
 // Estado da Aplicação
@@ -57,9 +112,9 @@ const state = {
   selectedDate: null,
   selectedTimeSlot: null,
   baseTimeSlots: [
-    '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-    '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00',
-    '15:30', '16:00', '16:30', '17:00', '17:30', '18:00'
+    '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
+    '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
+    '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00'
   ],
   appointments: [],
   blockedTimes: [],
@@ -76,7 +131,9 @@ const state = {
     name: 'Samara Designer',
     whatsapp: '5527988459016',
     address: 'Rua Nossa Senhora das Graças, Santo Antônio, Cariacica',
-    pin: '1234'
+    pin: '1234',
+    defaultSheetStatus: 'Aguardando',
+    sheetsWebhookUrl: ''
   },
   lastConfirmedBooking: null
 };
@@ -92,6 +149,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadServicesFromSupabase();
   await loadBlockedTimes();
   await loadAppointments();
+  await syncFromGoogleSheets();
   await loadClientsFromSupabase();
   renderServices();
   setupCalendar();
@@ -121,6 +179,9 @@ function loadStudioConfig() {
   if (!state.studioConfig.address || state.studioConfig.address.includes('Studio Samara • Atendimento com Hora Marcada')) {
     state.studioConfig.address = 'Rua Nossa Senhora das Graças, Santo Antônio, Cariacica';
   }
+  if (!state.studioConfig.defaultSheetStatus) {
+    state.studioConfig.defaultSheetStatus = 'Aguardando';
+  }
 
   localStorage.setItem(STORAGE_CONFIG, JSON.stringify(state.studioConfig));
 
@@ -128,11 +189,15 @@ function loadStudioConfig() {
   const waInput = document.getElementById('cfg-samara-whatsapp');
   const addrInput = document.getElementById('cfg-studio-address');
   const pinInput = document.getElementById('cfg-admin-pin');
+  const statusSelect = document.getElementById('cfg-default-sheet-status');
+  const webhookInput = document.getElementById('cfg-sheets-webhook-url');
 
   if (nameInput) nameInput.value = state.studioConfig.name;
   if (waInput) waInput.value = state.studioConfig.whatsapp;
   if (addrInput) addrInput.value = state.studioConfig.address;
   if (pinInput) pinInput.value = state.studioConfig.pin;
+  if (statusSelect) statusSelect.value = state.studioConfig.defaultSheetStatus || 'Aguardando';
+  if (webhookInput) webhookInput.value = state.studioConfig.sheetsWebhookUrl || '';
 }
 
 function saveStudioConfig() {
@@ -140,16 +205,196 @@ function saveStudioConfig() {
   const waInput = document.getElementById('cfg-samara-whatsapp');
   const addrInput = document.getElementById('cfg-studio-address');
   const pinInput = document.getElementById('cfg-admin-pin');
+  const statusSelect = document.getElementById('cfg-default-sheet-status');
+  const webhookInput = document.getElementById('cfg-sheets-webhook-url');
 
   state.studioConfig = {
     name: nameInput.value.trim() || 'Samara Designer',
     whatsapp: waInput.value.trim().replace(/\D/g, '') || '5527988459016',
     address: addrInput.value.trim() || 'Rua Nossa Senhora das Graças, Santo Antônio, Cariacica',
-    pin: pinInput.value.trim() || '1234'
+    pin: pinInput.value.trim() || '1234',
+    defaultSheetStatus: statusSelect ? statusSelect.value : 'Aguardando',
+    sheetsWebhookUrl: webhookInput ? webhookInput.value.trim() : ''
   };
 
   localStorage.setItem(STORAGE_CONFIG, JSON.stringify(state.studioConfig));
-  showToast('✓ Configurações do Studio salvas!');
+  showToast('✓ Configurações do Studio e da Planilha salvas!');
+}
+
+// -------------------------------------------------------------
+// INTEGRAÇÃO COM A PLANILHA GOOGLE DA SAMARA (COLUNAS A até G)
+// -------------------------------------------------------------
+function mapServiceToSpreadsheetArte(serviceTitle) {
+  const raw = String(serviceTitle || '').trim();
+  const map = {
+    'Manutenção de Gel': 'Manutenção',
+    'Manutenção e Pé': 'Manutenção pé',
+    'Manutenção pé': 'Manutenção pé',
+    'Manutenção, Pé e Henna': 'Manutenção Pé e Henna',
+    'Manutenção, Pé e Sobrancelhas': 'Manutenção Pé e Sobrancelhas',
+    'Pé com Henna': 'Pé Henna',
+    'Pé com Sobrancelhas': 'Pé e Sobrancelhas',
+    'Mão com Henna': 'Mão e Henna',
+    'Mão com Sobrancelhas': 'Mão e Sobrancelhas',
+    'Pé e Mão com Henna': 'Pé e Mão e Henna',
+    'Pé e Mão com Sobrancelhas': 'Pé e Mão e Sobrancelhas'
+  };
+  return map[raw] || raw;
+}
+
+function estimateDurationFromArte(arteTitle) {
+  const lower = String(arteTitle || '').toLowerCase();
+  if (!lower || lower.includes('academia') || lower.includes('cílios') || lower.includes('cilios') || lower.includes('compromisso')) {
+    return 90;
+  }
+  const found = state.services.find(s =>
+    s.title.toLowerCase() === lower ||
+    mapServiceToSpreadsheetArte(s.title).toLowerCase() === lower
+  );
+  if (found) return Number(found.durationMinutes) || 90;
+  if (lower.includes('unha de gel') && lower.includes('pé')) return 240;
+  if (lower.includes('unha de gel')) return 210;
+  if (lower.includes('manutenção') && lower.includes('pé')) return 210;
+  if (lower.includes('manutenção')) return 180;
+  if (lower.includes('banho de gel')) return 150;
+  if (lower.includes('pé e mão')) return 120;
+  return 60;
+}
+
+function formatAppointmentForSheetColumns(appt) {
+  const [y, m, d] = (appt.date || '').split('-').map(Number);
+  const dateObj = new Date(y, (m || 1) - 1, d || 1, 12, 0, 0);
+  const diaMes = d || dateObj.getDate();
+  const diaSemana = SAMARA_WEEKDAYS[dateObj.getDay()] || 'Seg';
+  const horario = appt.time && appt.time.length === 5 ? `${appt.time}:00` : (appt.time || '08:00:00');
+  const arte = mapServiceToSpreadsheetArte(appt.serviceTitle);
+  const valor = Number(appt.price || 0);
+  let statusPlanilha = 'aguardando';
+  const stLower = String(appt.status || '').toLowerCase();
+  if (stLower.includes('confirm') || stLower.includes('conclu')) {
+    statusPlanilha = 'confirmado';
+  } else if (stLower.includes('cancel')) {
+    statusPlanilha = 'cancelado';
+  }
+
+  return {
+    dia: diaMes,
+    dataSemana: diaSemana,
+    cliente: appt.clientName,
+    horario: horario,
+    arte: arte,
+    valor: valor,
+    status: statusPlanilha
+  };
+}
+
+function mergeSheetBookingsIntoState(sheetBookings) {
+  if (!Array.isArray(sheetBookings) || sheetBookings.length === 0) return;
+
+  const existingByKey = new Map();
+  state.appointments.forEach(a => {
+    const key = `${a.date}_${(a.time || '').slice(0, 5)}_${(a.clientName || '').trim().toLowerCase()}`;
+    existingByKey.set(key, a);
+  });
+
+  sheetBookings.forEach(sb => {
+    const cleanTime = (sb.time || '07:00').slice(0, 5);
+    const key = `${sb.date}_${cleanTime}_${(sb.clientName || '').trim().toLowerCase()}`;
+    const durMin = estimateDurationFromArte(sb.serviceTitle);
+    const startMin = Number(cleanTime.split(':')[0]) * 60 + Number(cleanTime.split(':')[1]);
+    const endH = String(Math.floor((startMin + durMin) / 60)).padStart(2, '0');
+    const endM = String((startMin + durMin) % 60).padStart(2, '0');
+    const calcEnd = sb.endTime || `${endH}:${endM}`;
+
+    if (existingByKey.has(key)) {
+      const target = existingByKey.get(key);
+      if (sb.status) target.status = sb.status;
+      if (!target.endTime) target.endTime = calcEnd;
+      target.source = target.source || 'google_sheets';
+    } else {
+      state.appointments.push({
+        id: sb.id || ('sheet-' + sb.date.replace(/-/g, '') + '-' + cleanTime.replace(':', '')),
+        clientName: sb.clientName,
+        clientPhone: sb.clientPhone || 'Planilha Google',
+        serviceId: sb.serviceId || 'srv-mao',
+        serviceTitle: sb.serviceTitle,
+        date: sb.date,
+        time: cleanTime,
+        endTime: calcEnd,
+        price: Number(sb.price || 0),
+        notes: 'Sincronizado da Planilha Google da Samara',
+        status: sb.status || 'Confirmado',
+        source: 'google_sheets',
+        createdAt: new Date().toISOString()
+      });
+    }
+  });
+
+  state.appointments.sort((a, b) => {
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    return (a.time || '').localeCompare(b.time || '');
+  });
+
+  localStorage.setItem(STORAGE_APPTS, JSON.stringify(state.appointments));
+}
+
+async function syncFromGoogleSheets() {
+  // 1. Garantir os agendamentos conhecidos da aba NOVEMBRO 2026 da planilha da Samara
+  mergeSheetBookingsIntoState(INITIAL_SHEET_BOOKINGS_NOV_2026);
+
+  // 2. Se houver Webhook do Google Apps Script configurado, buscar todas as abas em tempo real
+  const webhookUrl = state.studioConfig.sheetsWebhookUrl;
+  if (webhookUrl && webhookUrl.startsWith('https://script.google.com/')) {
+    try {
+      const resp = await fetch(webhookUrl, { method: 'GET', redirect: 'follow' });
+      if (resp.ok) {
+        const json = await resp.json();
+        if (json && json.ok && Array.isArray(json.bookings)) {
+          mergeSheetBookingsIntoState(json.bookings);
+          console.log(`✓ ${json.bookings.length} linhas sincronizadas ao vivo da Planilha Google.`);
+          return true;
+        }
+      }
+    } catch (err) {
+      console.warn('Aviso ao ler do conector Apps Script:', err);
+    }
+  }
+  return false;
+}
+
+async function syncAppointmentToGoogleSheets(appt, action = 'upsert') {
+  const cols = formatAppointmentForSheetColumns(appt);
+  const webhookUrl = state.studioConfig.sheetsWebhookUrl;
+
+  if (!webhookUrl || !webhookUrl.startsWith('https://script.google.com/')) {
+    console.info('ℹ️ Dados formatados para a Planilha da Samara (Col A-G):', cols);
+    return false;
+  }
+
+  try {
+    const payload = {
+      action: action,
+      date: appt.date,
+      time: appt.time,
+      clientName: appt.clientName,
+      clientPhone: appt.clientPhone,
+      arte: cols.arte,
+      price: cols.valor,
+      status: cols.status
+    };
+
+    await fetch(webhookUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    console.log('✓ Enviado automaticamente para a Planilha Google da Samara:', cols);
+    return true;
+  } catch (err) {
+    console.warn('Aviso ao enviar para a Planilha Google:', err);
+    return false;
+  }
 }
 
 // -------------------------------------------------------------
@@ -165,7 +410,7 @@ async function loadServicesFromSupabase() {
       .order('price', { ascending: true });
 
     if (!error && data && data.length > 0) {
-      state.services = data.map(s => ({
+      const dbServices = data.map(s => ({
         id: s.id,
         title: s.title,
         category: s.category,
@@ -174,7 +419,15 @@ async function loadServicesFromSupabase() {
         durationLabel: s.duration_label,
         icon: s.icon || '💅'
       }));
-      console.log(`✓ ${data.length} serviços carregados diretamente do Supabase.`);
+      // Garantir também os combos extras da planilha da Samara caso ainda não estejam no banco
+      const existingIds = new Set(dbServices.map(s => s.id));
+      FALLBACK_SERVICES.forEach(fb => {
+        if (!existingIds.has(fb.id)) {
+          dbServices.push(fb);
+        }
+      });
+      state.services = dbServices;
+      console.log(`✓ ${state.services.length} serviços carregados.`);
     }
   } catch (e) {
     console.warn('Usando catálogo local:', e);
@@ -252,7 +505,10 @@ async function saveNewAppointment(appt) {
   state.appointments.unshift(appt);
   localStorage.setItem(STORAGE_APPTS, JSON.stringify(state.appointments));
 
-  // 2. Gravar no Supabase (Appointments + Auto-cadastro em Clients)
+  // 2. Enviar imediatamente para a Planilha Google da Samara (Colunas A-G)
+  syncAppointmentToGoogleSheets(appt, 'upsert');
+
+  // 3. Gravar no Supabase (Appointments + Auto-cadastro em Clients)
   if (supabaseClient) {
     try {
       // Inserir agendamento
@@ -297,6 +553,9 @@ async function updateAppointmentStatusDB(id, newStatus) {
     apt.status = newStatus;
     localStorage.setItem(STORAGE_APPTS, JSON.stringify(state.appointments));
 
+    // Sincronizar o novo status (confirmado / cancelado) na Coluna G da Planilha da Samara
+    syncAppointmentToGoogleSheets(apt, 'status');
+
     if (supabaseClient) {
       await supabaseClient
         .from('appointments')
@@ -304,7 +563,8 @@ async function updateAppointmentStatusDB(id, newStatus) {
         .eq('id', id);
     }
     renderAdminAppointments();
-    showToast(`Status atualizado para: ${newStatus}`);
+    renderTimeSlots();
+    showToast(`✓ Status atualizado para: ${newStatus}`);
   }
 }
 
@@ -393,7 +653,10 @@ const COMBO_EQUIVALENTS = {
   'srv-banho-gel+srv-sobrancelhas': 'srv-banho-gel-sobrancelhas',
   'srv-esmalte-gel+srv-henna': 'srv-esmalte-gel-henna',
   'srv-esmalte-gel+srv-sobrancelhas': 'srv-esmalte-gel-sobrancelhas',
-  'srv-henna+srv-manutencao': 'srv-manutencao-henna'
+  'srv-henna+srv-manutencao': 'srv-manutencao-henna',
+  'srv-manutencao+srv-pe': 'srv-manutencao-pe',
+  'srv-henna+srv-manutencao+srv-pe': 'srv-manutencao-pe-henna',
+  'srv-manutencao+srv-pe+srv-sobrancelhas': 'srv-manutencao-pe-sobrancelhas'
 };
 
 function getServiceImage(serviceId) {
@@ -523,6 +786,11 @@ function renderServices() {
   const grid = document.getElementById('services-grid');
   const dotsContainer = document.getElementById('carousel-dots');
   const counterEl = document.getElementById('carousel-counter');
+
+  const allFilterBtn = document.getElementById('filter-all');
+  if (allFilterBtn) {
+    allFilterBtn.textContent = `Todos (${state.services.length})`;
+  }
 
   if (!grid) return;
   grid.innerHTML = '';
@@ -776,7 +1044,10 @@ function renderTimeSlots() {
   const durationInfo = summary ? ` (Duração: ${summary.durationLabel})` : '';
   displayLabel.textContent = `Horários para ${d}/${m}/${y}${durationInfo}:`;
 
-  const dayBookings = state.appointments.filter(a => a.date === state.selectedDate && a.status === 'Confirmado');
+  const dayBookings = state.appointments.filter(a =>
+    a.date === state.selectedDate &&
+    (a.status === 'Confirmado' || a.status === 'Aguardando')
+  );
   const dayBlocks = state.blockedTimes.filter(b => (b.block_date || b.blockDate) === state.selectedDate);
 
   const now = new Date();
@@ -1011,6 +1282,8 @@ async function confirmBooking() {
   const endMin = startMin + summary.durationMinutes;
   const calculatedEndTime = minutesToTime(endMin);
 
+  const initialStatus = state.studioConfig.defaultSheetStatus || 'Aguardando';
+
   const newAppointment = {
     id: 'apt-' + Date.now().toString().slice(-6),
     clientName: name,
@@ -1024,7 +1297,7 @@ async function confirmBooking() {
     endTime: calculatedEndTime,
     price: summary.price,
     notes: notesInput.value.trim(),
-    status: 'Confirmado',
+    status: initialStatus,
     createdAt: new Date().toISOString()
   };
 
@@ -1247,10 +1520,10 @@ function renderAdminAppointments() {
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = formatDateISO(tomorrow);
 
-  const totalToday = state.appointments.filter(a => a.date === todayStr && a.status === 'Confirmado').length;
-  const totalActive = state.appointments.filter(a => a.status === 'Confirmado').length;
+  const totalToday = state.appointments.filter(a => a.date === todayStr && (a.status === 'Confirmado' || a.status === 'Aguardando')).length;
+  const totalActive = state.appointments.filter(a => a.status === 'Confirmado' || a.status === 'Aguardando').length;
   const projectedRevenue = state.appointments
-    .filter(a => a.status === 'Confirmado' || a.status === 'Concluído')
+    .filter(a => a.status === 'Confirmado' || a.status === 'Concluído' || a.status === 'Aguardando')
     .reduce((sum, a) => sum + (a.price || 0), 0);
 
   metricToday.textContent = totalToday;
@@ -1275,24 +1548,32 @@ function renderAdminAppointments() {
 
   filtered.forEach(item => {
     const [y, m, d] = item.date.split('-');
+    const cols = formatAppointmentForSheetColumns(item);
     const card = document.createElement('div');
     card.className = 'appointment-item';
 
+    const sheetBadge = item.source === 'google_sheets'
+      ? `<span class="sheet-source-badge" title="Sincronizado com a Planilha Google">📗 Planilha</span>`
+      : '';
+
     card.innerHTML = `
       <div class="appt-client-info">
-        <span class="appt-name">${item.clientName}</span>
+        <span class="appt-name">${item.clientName}${sheetBadge}</span>
         <span class="appt-phone">📞 ${item.clientPhone}</span>
       </div>
       <div class="appt-service-info">
-        <span class="appt-service-title">${item.serviceTitle}</span>
-        <span class="appt-datetime">📅 ${d}/${m}/${y} • ${item.time}h às ${item.endTime || '-'}h • R$ ${item.price.toFixed(2).replace('.', ',')}</span>
+        <span class="appt-service-title">${cols.arte}</span>
+        <span class="appt-datetime">📅 Dia ${cols.dia} (${cols.dataSemana}) • ${d}/${m}/${y} • ${item.time}h às ${item.endTime || '-'}h • R$ ${Number(item.price || 0).toFixed(2).replace('.', ',')}</span>
       </div>
       <div>
-        <span class="appt-status-badge ${item.status.toLowerCase()}">${item.status}</span>
+        <span class="appt-status-badge ${(item.status || 'Confirmado').toLowerCase()}">${item.status}</span>
       </div>
       <div class="appt-actions">
         <button class="appt-btn whatsapp" onclick="sendClientReminder('${item.id}')" title="Enviar lembrete pelo WhatsApp">💬 Lembrete</button>
-        ${item.status === 'Confirmado' ? `
+        ${item.status === 'Aguardando' ? `
+          <button class="appt-btn confirm-action" onclick="updateAppointmentStatus('${item.id}', 'Confirmado')">✓ Confirmar</button>
+          <button class="appt-btn danger" onclick="updateAppointmentStatus('${item.id}', 'Cancelado')">Cancelar</button>
+        ` : item.status === 'Confirmado' ? `
           <button class="appt-btn" onclick="updateAppointmentStatus('${item.id}', 'Concluído')">Concluir</button>
           <button class="appt-btn danger" onclick="updateAppointmentStatus('${item.id}', 'Cancelado')">Cancelar</button>
         ` : `
@@ -1528,7 +1809,7 @@ function renderAdminClients() {
 }
 
 // -------------------------------------------------------------
-// EXPORTAÇÃO DE RELATÓRIO EM CSV / EXCEL
+// EXPORTAÇÃO DE RELATÓRIO NO FORMATO EXATO DA PLANILHA DA SAMARA (COLUNAS A-G)
 // -------------------------------------------------------------
 function exportAppointmentsCSV() {
   if (state.appointments.length === 0) {
@@ -1536,20 +1817,20 @@ function exportAppointmentsCSV() {
     return;
   }
 
-  let csvContent = 'Código;Data;Início;Término;Cliente;WhatsApp;Procedimento;Valor (R$);Status;Observações\n';
+  // Cabeçalho idêntico às colunas A até G da Planilha da Samara: [Dia, Data, Cliente, Horário, Arte, Valor, Status]
+  let csvContent = ';Data;Cliente;Horário;Arte;Valor;Status;WhatsApp\n';
 
   state.appointments.forEach(a => {
+    const cols = formatAppointmentForSheetColumns(a);
     const row = [
-      a.id,
-      a.date,
-      a.time,
-      a.endTime || '',
-      `"${a.clientName.replace(/"/g, '""')}"`,
-      `"${a.clientPhone}"`,
-      `"${a.serviceTitle.replace(/"/g, '""')}"`,
-      a.price.toFixed(2).replace('.', ','),
-      a.status,
-      `"${(a.notes || '').replace(/"/g, '""')}"`
+      cols.dia,
+      cols.dataSemana,
+      `"${(cols.cliente || '').replace(/"/g, '""')}"`,
+      cols.horario,
+      `"${(cols.arte || '').replace(/"/g, '""')}"`,
+      cols.valor,
+      cols.status,
+      `"${a.clientPhone || ''}"`
     ];
     csvContent += row.join(';') + '\n';
   });
@@ -1558,11 +1839,11 @@ function exportAppointmentsCSV() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
-  link.setAttribute('download', `samara_agendamentos_${formatDateISO(new Date())}.csv`);
+  link.setAttribute('download', `planilha_samara_${formatDateISO(new Date())}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  showToast('✓ Planilha CSV gerada com sucesso!');
+  showToast('✓ Planilha gerada com as colunas exatas da Samara (Dia, Data, Cliente, Horário, Arte, Valor, Status)!');
 }
 
 // -------------------------------------------------------------
@@ -1652,9 +1933,39 @@ function setupEventListeners() {
   const saveCfgBtn = document.getElementById('btn-save-config');
   if (saveCfgBtn) saveCfgBtn.addEventListener('click', saveStudioConfig);
 
+  const testSheetsBtn = document.getElementById('btn-test-sheets-sync');
+  if (testSheetsBtn) {
+    testSheetsBtn.addEventListener('click', async () => {
+      saveStudioConfig();
+      const ok = await syncFromGoogleSheets();
+      renderAdminAppointments();
+      renderTimeSlots();
+      if (ok) {
+        showToast('✓ Sincronizado ao vivo com a Planilha Google da Samara!');
+      } else {
+        showToast('📗 Agenda de Novembro 2026 ativa! Cole a URL do Apps Script acima para sincronizar em tempo real.');
+      }
+    });
+  }
+
+  const copyScriptBtn = document.getElementById('btn-copy-apps-script');
+  if (copyScriptBtn) {
+    copyScriptBtn.addEventListener('click', async () => {
+      try {
+        const res = await fetch('./google-sheets-script.gs');
+        const scriptText = await res.text();
+        await navigator.clipboard.writeText(scriptText);
+        showToast('✓ Código copiado! Agora cole em Extensões -> Apps Script na Planilha da Samara.');
+      } catch (err) {
+        showToast('⚠️ Abra o arquivo google-sheets-script.gs para copiar o código.');
+      }
+    });
+  }
+
   const refreshBtn = document.getElementById('btn-refresh-agenda');
   if (refreshBtn) refreshBtn.addEventListener('click', async () => {
     await loadAppointments();
+    await syncFromGoogleSheets();
     await loadBlockedTimes();
     await loadServicesFromSupabase();
     await loadClientsFromSupabase();
@@ -1663,7 +1974,7 @@ function setupEventListeners() {
     renderAdminBlocks();
     renderAdminClients();
     renderTimeSlots();
-    showToast('✓ Agenda e Banco sincronizados com Supabase!');
+    showToast('✓ Agenda sincronizada com Supabase e Planilha da Samara!');
   });
 
   const keyBtns = document.querySelectorAll('.key-btn');
