@@ -405,6 +405,8 @@ function formatAppointmentForSheetColumns(appt) {
   const stLower = String(appt.status || '').toLowerCase();
   if (stLower.includes('confirm') || stLower.includes('conclu')) {
     statusPlanilha = 'confirmado';
+  } else if (stLower.includes('rejeit')) {
+    statusPlanilha = 'rejeitado';
   } else if (stLower.includes('cancel')) {
     statusPlanilha = 'cancelado';
   }
@@ -448,7 +450,9 @@ function mergeSheetBookingsIntoState(sheetBookings) {
 
     if (existingByKey.has(key)) {
       const target = existingByKey.get(key);
-      if (sb.status) target.status = sb.status;
+      if (sb.status && !(target.status === 'Rejeitado' && sb.status === 'Confirmado')) {
+        target.status = sb.status;
+      }
       if (!target.endTime) target.endTime = calcEnd;
       target.source = target.source || 'google_sheets';
     } else {
@@ -1711,13 +1715,12 @@ function renderAdminAppointments() {
       <div class="appt-actions">
         <button class="appt-btn whatsapp" onclick="sendClientReminder('${item.id}')" title="Enviar lembrete pelo WhatsApp">💬 Lembrete</button>
         ${item.status === 'Aguardando' ? `
-          <button class="appt-btn confirm-action" onclick="updateAppointmentStatus('${item.id}', 'Confirmado')">✓ Confirmar</button>
-          <button class="appt-btn danger" onclick="updateAppointmentStatus('${item.id}', 'Cancelado')">Cancelar</button>
+          <button class="appt-btn confirm-action" onclick="updateAppointmentStatus('${item.id}', 'Confirmado')" title="Aceitar agendamento (Pinta de Verde na Planilha)">✓ Aceitar</button>
+          <button class="appt-btn reject-action" onclick="updateAppointmentStatus('${item.id}', 'Rejeitado')" title="Rejeitar solicitação e liberar horário (Pinta de Azul na Planilha)">✕ Rejeitar</button>
         ` : item.status === 'Confirmado' ? `
-          <button class="appt-btn" onclick="updateAppointmentStatus('${item.id}', 'Concluído')">Concluir</button>
-          <button class="appt-btn danger" onclick="updateAppointmentStatus('${item.id}', 'Cancelado')">Cancelar</button>
+          <button class="appt-btn danger" onclick="updateAppointmentStatus('${item.id}', 'Cancelado')" title="Cancelar agendamento e liberar horário (Pinta de Vermelho na Planilha)">✕ Cancelar</button>
         ` : `
-          <button class="appt-btn" onclick="deleteAppointment('${item.id}')">Excluir</button>
+          <button class="appt-btn" onclick="deleteAppointment('${item.id}')">🗑️ Excluir</button>
         `}
       </div>
     `;
@@ -2410,7 +2413,7 @@ async function handleSaveManualBooking(e) {
 
   // Validar conflito de horários com agendamentos existentes
   const conflict = state.appointments.find(a => {
-    if (a.date !== date || a.status === 'Cancelado') return false;
+    if (a.date !== date || a.status === 'Cancelado' || a.status === 'Rejeitado') return false;
     const [ah, am] = a.time.split(':').map(Number);
     const [eh, em] = a.endTime.split(':').map(Number);
     const aStart = ah * 60 + am;

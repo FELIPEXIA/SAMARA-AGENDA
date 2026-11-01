@@ -1,4 +1,4 @@
-const CACHE_NAME = 'samara-studio-v7';
+const CACHE_NAME = 'samara-studio-v8';
 const STATIC_ASSETS = [
   './',
   './index.html',

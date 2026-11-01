@@ -105,6 +105,8 @@ function doGet(e) {
         let appStatus = 'Confirmado';
         if (statusRaw.indexOf('cancel') !== -1) {
           appStatus = 'Cancelado';
+        } else if (statusRaw.indexOf('rejeit') !== -1) {
+          appStatus = 'Rejeitado';
         } else if (statusRaw.indexOf('aguard') !== -1) {
           appStatus = 'Aguardando';
         }
