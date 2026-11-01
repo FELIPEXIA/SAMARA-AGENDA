@@ -2427,6 +2427,9 @@ function updateManualModalTimeSlots() {
   const timeInput = document.getElementById('manual-time-input');
   if (!serviceSelect || !dateInput || !timeInput) return;
 
+  // Garantir que o sinalizador atualize sempre que a Samara trocar o horário
+  timeInput.onchange = () => updateManualSlotStatus();
+
   const date = dateInput.value;
   const service = state.services.find(s => s.id === serviceSelect.value) || state.services[0];
   const durationMin = service ? Number(service.durationMinutes) || 60 : 60;
@@ -2476,6 +2479,97 @@ function updateManualModalTimeSlots() {
     timeInput.value = firstFreeSlot;
   } else {
     timeInput.value = '09:00';
+  }
+
+  updateManualSlotStatus();
+}
+
+// Verifica se o horário escolhido pela Samara conflita com agendamento ou bloqueio
+function findManualSlotConflict(date, time, durationMin) {
+  if (!date || !time) return null;
+
+  const selectedDateObj = new Date(date + 'T12:00:00');
+  if (selectedDateObj.getDay() === 0) {
+    return { type: 'sunday' };
+  }
+
+  const [h, m] = String(time).slice(0, 5).split(':').map(Number);
+  const startMin = h * 60 + m;
+  const endMin = startMin + durationMin;
+
+  const appt = state.appointments.find(a => {
+    if (a.date !== date || a.status === 'Cancelado' || a.status === 'Rejeitado') return false;
+    const { aStart, aEnd } = getAppointmentSafeBounds(a);
+    return Math.max(startMin, aStart) < Math.min(endMin, aEnd);
+  });
+  if (appt) {
+    const { endLabel } = getAppointmentSafeBounds(appt);
+    return { type: 'appointment', appt, endLabel };
+  }
+
+  const block = state.blockedTimes.find(b => {
+    const bDate = b.block_date || b.blockDate;
+    if (bDate !== date) return false;
+    const bStartStr = b.start_time || b.startTime;
+    const bEndStr = b.end_time || b.endTime;
+    if (!bStartStr && !bEndStr) return true;
+    const [bh, bm] = String(bStartStr).split(':').map(Number);
+    const [beh, bem] = String(bEndStr).split(':').map(Number);
+    const bStart = (bh || 0) * 60 + (bm || 0);
+    const bEnd = (beh || 0) * 60 + (bem || 0);
+    return Math.max(startMin, bStart) < Math.min(endMin, bEnd);
+  });
+  if (block) return { type: 'block', block };
+
+  return null;
+}
+
+function describeManualConflict(conflict) {
+  if (!conflict) return '';
+  if (conflict.type === 'sunday') {
+    return '🚫 Domingo o Studio não abre. Escolha uma data de segunda a sábado.';
+  }
+  if (conflict.type === 'block') {
+    return '🔒 Horário bloqueado por folga/pausa da Samara neste dia.';
+  }
+  const a = conflict.appt;
+  const statusLabel = a.status === 'Aguardando' ? ' (aguardando resposta)' : '';
+  return `⚠️ Horário ocupado! Já existe "${a.clientName}" — ${mapServiceToSpreadsheetArte(a.serviceTitle).trim()} das ${String(a.time).slice(0, 5)} às ${conflict.endLabel}${statusLabel}. Escolha outro horário ou data.`;
+}
+
+// Sinalizador ao vivo abaixo do horário + trava do botão Salvar
+function updateManualSlotStatus() {
+  const statusEl = document.getElementById('manual-slot-status');
+  const saveBtn = document.getElementById('save-manual-booking-btn');
+  const serviceSelect = document.getElementById('manual-service-select');
+  const dateInput = document.getElementById('manual-date-input');
+  const timeInput = document.getElementById('manual-time-input');
+  if (!statusEl || !dateInput || !timeInput) return;
+
+  const service = state.services.find(s => s.id === (serviceSelect && serviceSelect.value)) || state.services[0];
+  const durationMin = service ? Number(service.durationMinutes) || 60 : 60;
+  const conflict = findManualSlotConflict(dateInput.value, timeInput.value, durationMin);
+
+  statusEl.style.display = 'block';
+  if (conflict) {
+    statusEl.className = 'manual-slot-status busy';
+    statusEl.textContent = describeManualConflict(conflict);
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.classList.add('is-disabled');
+      saveBtn.title = 'Escolha um horário livre para salvar';
+    }
+  } else {
+    const [h, m] = String(timeInput.value).split(':').map(Number);
+    const endMin = h * 60 + m + durationMin;
+    const endLabel = `${String(Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
+    statusEl.className = 'manual-slot-status free';
+    statusEl.textContent = `✓ Horário livre: ${timeInput.value} às ${endLabel} (${service ? service.durationLabel : '1 hora'})`;
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.classList.remove('is-disabled');
+      saveBtn.title = '';
+    }
   }
 }
 
@@ -2593,7 +2687,10 @@ async function handleSaveManualBooking(e) {
 
   if (conflict) {
     const { endLabel } = getAppointmentSafeBounds(conflict);
-    showManualFeedback(`⚠️ Conflito de horário! Já existe o agendamento de "${conflict.clientName}" (${conflict.serviceTitle}) das ${conflict.time} às ${endLabel}.`, 'error');
+    const msg = describeManualConflict({ type: 'appointment', appt: conflict, endLabel });
+    showManualFeedback(msg, 'error');
+    showToast('⚠️ Horário ocupado! Escolha outro horário.');
+    updateManualSlotStatus();
     return;
   }
 
@@ -2666,6 +2763,9 @@ function showManualFeedback(text, type) {
   feedback.textContent = text;
   feedback.className = `manual-feedback-text ${type}`;
   feedback.style.display = 'block';
+  if (type === 'error') {
+    feedback.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 }
 
 // -------------------------------------------------------------

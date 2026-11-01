@@ -2793,6 +2793,44 @@ body[data-theme="velvet-plum"] .slot-btn.selected {
   color: #ffffff;
 }
 
+/* Sinalizador ao vivo de disponibilidade no Agendamento Manual da Samara */
+.manual-slot-status {
+  margin-top: 12px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  transition: all 0.2s ease;
+}
+
+.manual-slot-status.free {
+  background: rgba(74, 222, 128, 0.12);
+  border: 1px solid rgba(74, 222, 128, 0.4);
+  color: #86efac;
+}
+
+.manual-slot-status.busy {
+  background: rgba(248, 113, 113, 0.16);
+  border: 1px solid rgba(248, 113, 113, 0.55);
+  color: #fecaca;
+  animation: slotShake 0.35s ease;
+}
+
+@keyframes slotShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.confirm-btn.is-disabled,
+.confirm-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+  box-shadow: none;
+}
+
 
 
 
