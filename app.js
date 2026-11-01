@@ -658,6 +658,8 @@ async function loadClientsFromSupabase() {
 }
 
 async function saveNewAppointment(appt) {
+  appt.source = appt.source || 'site';
+
   // 1. Salvar no cache local
   state.appointments.unshift(appt);
   localStorage.setItem(STORAGE_APPTS, JSON.stringify(state.appointments));
@@ -687,16 +689,18 @@ async function saveNewAppointment(appt) {
 
       if (apptErr) console.warn('Erro ao salvar agendamento no Supabase:', apptErr);
 
-      // Auto-cadastro / atualização da cliente na tabela public.clients
-      const { error: clientErr } = await supabaseClient
-        .from('clients')
-        .upsert([{
-          name: appt.clientName,
-          phone: appt.clientPhone,
-          notes: appt.notes || null
-        }], { onConflict: 'phone' });
+      // Auto-cadastro / atualização da cliente na tabela public.clients (se tiver telefone válido)
+      if (appt.clientPhone && /\d{8,}/.test(appt.clientPhone)) {
+        const { error: clientErr } = await supabaseClient
+          .from('clients')
+          .upsert([{
+            name: appt.clientName,
+            phone: appt.clientPhone,
+            notes: appt.notes || null
+          }], { onConflict: 'phone' });
 
-      if (clientErr) console.warn('Aviso: auto-cadastro de cliente:', clientErr);
+        if (clientErr) console.warn('Aviso: auto-cadastro de cliente:', clientErr);
+      }
 
     } catch (err) {
       console.warn('Exceção ao persistir no Supabase:', err);
@@ -2390,28 +2394,133 @@ function setupEventListeners() {
 }
 
 // -------------------------------------------------------------
-// GESTÃO DE AGENDAMENTO MANUAL (ADMIN)
+// GESTÃO DE AGENDAMENTO MANUAL (ADMIN - FLUXO DA SAMARA)
 // -------------------------------------------------------------
+const VALID_SHEET_TIMES = [
+  '06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '09:30',
+  '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30',
+  '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
+  '18:00', '18:30', '19:00', '19:30', '20:00'
+];
+
+function getAppointmentSafeBounds(a) {
+  const cleanStart = String(a.time || '07:00').slice(0, 5);
+  const [ah, am] = cleanStart.split(':').map(Number);
+  const aStart = (ah || 0) * 60 + (am || 0);
+
+  if (a.endTime && String(a.endTime).includes(':')) {
+    const [eh, em] = String(a.endTime).slice(0, 5).split(':').map(Number);
+    const aEnd = (eh || 0) * 60 + (em || 0);
+    if (aEnd > aStart) return { aStart, aEnd, endLabel: String(a.endTime).slice(0, 5) };
+  }
+
+  const dur = estimateDurationFromArte(a.serviceTitle);
+  const aEnd = aStart + dur;
+  const endH = String(Math.floor(aEnd / 60)).padStart(2, '0');
+  const endM = String(aEnd % 60).padStart(2, '0');
+  return { aStart, aEnd, endLabel: `${endH}:${endM}` };
+}
+
+function updateManualModalTimeSlots() {
+  const serviceSelect = document.getElementById('manual-service-select');
+  const dateInput = document.getElementById('manual-date-input');
+  const timeInput = document.getElementById('manual-time-input');
+  if (!serviceSelect || !dateInput || !timeInput) return;
+
+  const date = dateInput.value;
+  const service = state.services.find(s => s.id === serviceSelect.value) || state.services[0];
+  const durationMin = service ? Number(service.durationMinutes) || 60 : 60;
+  const currentSelectedTime = timeInput.value || '09:00';
+
+  let firstFreeSlot = null;
+
+  timeInput.innerHTML = VALID_SHEET_TIMES.map(slot => {
+    const [sh, sm] = slot.split(':').map(Number);
+    const startMin = sh * 60 + sm;
+    const endMin = startMin + durationMin;
+
+    const conflict = state.appointments.find(a => {
+      if (a.date !== date || a.status === 'Cancelado' || a.status === 'Rejeitado') return false;
+      const { aStart, aEnd } = getAppointmentSafeBounds(a);
+      return Math.max(startMin, aStart) < Math.min(endMin, aEnd);
+    });
+
+    const isBlocked = state.blockedTimes.some(b => {
+      const bDate = b.block_date || b.blockDate;
+      if (bDate !== date) return false;
+      const bStartStr = b.start_time || b.startTime;
+      const bEndStr = b.end_time || b.endTime;
+      if (!bStartStr && !bEndStr) return true;
+      const [bh, bm] = String(bStartStr).split(':').map(Number);
+      const [beh, bem] = String(bEndStr).split(':').map(Number);
+      const bStart = (bh || 0) * 60 + (bm || 0);
+      const bEnd = (beh || 0) * 60 + (bem || 0);
+      return Math.max(startMin, bStart) < Math.min(endMin, bEnd);
+    });
+
+    if (conflict) {
+      return `<option value="${slot}">🔴 ${slot} — Ocupado (${conflict.clientName})</option>`;
+    }
+    if (isBlocked) {
+      return `<option value="${slot}">🔒 ${slot} — Bloqueado (Pausa/Folga)</option>`;
+    }
+    if (!firstFreeSlot && startMin >= 420) {
+      firstFreeSlot = slot;
+    }
+    return `<option value="${slot}">🟢 ${slot} — Livre</option>`;
+  }).join('');
+
+  if (VALID_SHEET_TIMES.includes(currentSelectedTime)) {
+    timeInput.value = currentSelectedTime;
+  } else if (firstFreeSlot) {
+    timeInput.value = firstFreeSlot;
+  } else {
+    timeInput.value = '09:00';
+  }
+}
+
 function openManualBookingModal() {
   const modal = document.getElementById('manual-booking-modal');
   const serviceSelect = document.getElementById('manual-service-select');
+  const priceInput = document.getElementById('manual-price-input');
   const dateInput = document.getElementById('manual-date-input');
   const timeInput = document.getElementById('manual-time-input');
   const feedback = document.getElementById('manual-booking-feedback');
 
   if (!modal || !serviceSelect) return;
 
-  // Carregar opções de procedimentos reais da Samara
+  // Carregar opções de procedimentos reais da Samara (mapeados com a Planilha)
   serviceSelect.innerHTML = state.services.map(s => {
     const formattedPrice = parseFloat(s.price).toFixed(2).replace('.', ',');
     return `<option value="${s.id}">${s.title} (${s.durationLabel}) — R$ ${formattedPrice}</option>`;
   }).join('');
 
-  // Sugerir data de hoje ou amanhã
+  if (priceInput && state.services.length > 0) {
+    priceInput.value = Math.round(Number(state.services[0].price));
+  }
+
+  // Atualizar valor e horários livres quando a Samara trocar o procedimento ou a data
+  serviceSelect.onchange = () => {
+    const srv = state.services.find(s => s.id === serviceSelect.value);
+    if (srv && priceInput) {
+      priceInput.value = Math.round(Number(srv.price));
+    }
+    updateManualModalTimeSlots();
+  };
+
+  dateInput.onchange = () => {
+    updateManualModalTimeSlots();
+  };
+
+  // Sugerir data de hoje (ou segunda-feira se hoje for domingo)
   const today = new Date();
+  if (today.getDay() === 0) {
+    today.setDate(today.getDate() + 1);
+  }
   dateInput.value = formatDateISO(today);
-  dateInput.min = formatDateISO(today);
-  timeInput.value = '09:00';
+  dateInput.min = formatDateISO(new Date());
+
+  updateManualModalTimeSlots();
 
   if (feedback) {
     feedback.className = 'manual-feedback-text';
@@ -2433,19 +2542,20 @@ async function handleSaveManualBooking(e) {
   const nameInput = document.getElementById('manual-client-name');
   const phoneInput = document.getElementById('manual-client-phone');
   const serviceSelect = document.getElementById('manual-service-select');
+  const priceInput = document.getElementById('manual-price-input');
   const dateInput = document.getElementById('manual-date-input');
   const timeInput = document.getElementById('manual-time-input');
   const notesInput = document.getElementById('manual-notes-input');
 
   const name = nameInput.value.trim();
-  const phone = phoneInput.value.trim();
+  const phone = phoneInput ? phoneInput.value.trim() : '';
   const serviceId = serviceSelect.value;
   const date = dateInput.value;
-  const time = timeInput.value;
-  const notes = notesInput.value.trim();
+  const time = String(timeInput.value || '').slice(0, 5);
+  const notes = notesInput ? notesInput.value.trim() : '';
 
-  if (!name || !phone || !serviceId || !date || !time) {
-    showManualFeedback('Por favor, preencha todos os campos com asterisco (*).', 'error');
+  if (!name || !serviceId || !date || !time) {
+    showManualFeedback('Por favor, preencha o Nome da Cliente, Procedimento, Data e Horário.', 'error');
     return;
   }
 
@@ -2462,37 +2572,42 @@ async function handleSaveManualBooking(e) {
     return;
   }
 
+  const customPrice = (priceInput && priceInput.value !== '')
+    ? Math.round(Number(priceInput.value))
+    : Math.round(Number(service.price));
+
   // Calcular horário de término
   const [h, m] = time.split(':').map(Number);
   const startMin = h * 60 + m;
-  const endMin = startMin + service.durationMinutes;
+  const endMin = startMin + Number(service.durationMinutes || 60);
   const endH = Math.floor(endMin / 60);
   const endM = endMin % 60;
   const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
 
-  // Validar conflito de horários com agendamentos existentes
+  // Validar conflito de horários com agendamentos existentes (com proteção contra endTime nulo)
   const conflict = state.appointments.find(a => {
     if (a.date !== date || a.status === 'Cancelado' || a.status === 'Rejeitado') return false;
-    const [ah, am] = a.time.split(':').map(Number);
-    const [eh, em] = a.endTime.split(':').map(Number);
-    const aStart = ah * 60 + am;
-    const aEnd = eh * 60 + em;
+    const { aStart, aEnd } = getAppointmentSafeBounds(a);
     return Math.max(startMin, aStart) < Math.min(endMin, aEnd);
   });
 
   if (conflict) {
-    showManualFeedback(`⚠️ Conflito de horário! Já existe o agendamento de "${conflict.clientName}" (${conflict.serviceTitle}) das ${conflict.time} às ${conflict.endTime}.`, 'error');
+    const { endLabel } = getAppointmentSafeBounds(conflict);
+    showManualFeedback(`⚠️ Conflito de horário! Já existe o agendamento de "${conflict.clientName}" (${conflict.serviceTitle}) das ${conflict.time} às ${endLabel}.`, 'error');
     return;
   }
 
   // Validar se há bloqueio da Samara nessa data/horário
   const isBlocked = state.blockedTimes.some(b => {
-    if (b.blockDate !== date) return false;
-    if (!b.startTime && !b.endTime) return true;
-    const [bh, bm] = b.startTime.split(':').map(Number);
-    const [beh, bem] = b.endTime.split(':').map(Number);
-    const bStart = bh * 60 + bm;
-    const bEnd = beh * 60 + bem;
+    const bDate = b.block_date || b.blockDate;
+    if (bDate !== date) return false;
+    const bStartStr = b.start_time || b.startTime;
+    const bEndStr = b.end_time || b.endTime;
+    if (!bStartStr && !bEndStr) return true;
+    const [bh, bm] = String(bStartStr).split(':').map(Number);
+    const [beh, bem] = String(bEndStr).split(':').map(Number);
+    const bStart = (bh || 0) * 60 + (bm || 0);
+    const bEnd = (beh || 0) * 60 + (bem || 0);
     return Math.max(startMin, bStart) < Math.min(endMin, bEnd);
   });
 
@@ -2501,38 +2616,47 @@ async function handleSaveManualBooking(e) {
     return;
   }
 
-  // Criar novo agendamento
+  const formattedPhone = phone ? formatPhoneMask(phone) : 'Agendado pela Samara';
+
+  // Criar novo agendamento já Confirmado (pinta de Verde na Planilha da Samara)
   const newAppt = {
     id: 'apt-' + Math.floor(100000 + Math.random() * 900000),
     clientName: name,
-    clientPhone: phone.replace(/\D/g, ''),
+    clientPhone: formattedPhone,
     serviceId: service.id,
     serviceTitle: service.title,
     date: date,
     time: time,
     endTime: endTime,
-    price: service.price,
-    notes: notes || 'Agendamento manual via painel',
+    price: customPrice,
+    notes: notes || 'Agendamento manual pela Samara',
     status: 'Confirmado',
+    source: 'site',
     createdAt: new Date().toISOString()
   };
 
-  showManualFeedback('Salvando agendamento no Supabase...', 'success');
+  showManualFeedback('Salvando na Agenda e enviando para a Planilha Google...', 'success');
 
   try {
     await saveNewAppointment(newAppt);
     await loadClientsFromSupabase();
+
+    // Mostrar na aba de Confirmados para a Samara já ver o card recém-criado
+    state.adminFilter = 'Confirmado';
+    const statusSelect = document.getElementById('admin-status-filter');
+    if (statusSelect) statusSelect.value = 'Confirmado';
+
     renderAdminAppointments();
     renderAdminClients();
     renderTimeSlots();
     closeManualBookingModal();
-    showToast(`✓ Agendamento de ${name} inserido com sucesso!`);
+    showToast(`✓ Agendamento de ${name} salvo e enviado para a Planilha (Confirmado)!`);
 
     nameInput.value = '';
-    phoneInput.value = '';
-    notesInput.value = '';
+    if (phoneInput) phoneInput.value = '';
+    if (notesInput) notesInput.value = '';
   } catch (err) {
-    showManualFeedback('Erro ao salvar no banco de dados: ' + err.message, 'error');
+    showManualFeedback('Erro ao salvar: ' + err.message, 'error');
   }
 }
 
@@ -2541,6 +2665,7 @@ function showManualFeedback(text, type) {
   if (!feedback) return;
   feedback.textContent = text;
   feedback.className = `manual-feedback-text ${type}`;
+  feedback.style.display = 'block';
 }
 
 // -------------------------------------------------------------

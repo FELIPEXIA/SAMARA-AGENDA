@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="stylesheet" href="style.css?v=11">
   <!-- Supabase CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -536,16 +536,22 @@
               <input type="text" id="manual-client-name" placeholder="Ex: Fernanda Lima" required>
             </div>
             <div class="input-group">
-              <label for="manual-client-phone">WhatsApp da Cliente *</label>
-              <input type="tel" id="manual-client-phone" placeholder="(11) 99999-9999" required>
+              <label for="manual-client-phone">WhatsApp da Cliente (opcional)</label>
+              <input type="tel" id="manual-client-phone" placeholder="(27) 99999-9999">
             </div>
           </div>
 
-          <div class="input-group" style="margin-top: 14px;">
-            <label for="manual-service-select">Procedimento / Serviço *</label>
-            <select id="manual-service-select" class="custom-select" style="width: 100%;" required>
-              <!-- Preenchido dinamicamente via app.js -->
-            </select>
+          <div class="config-grid" style="margin-top: 14px;">
+            <div class="input-group">
+              <label for="manual-service-select">Procedimento / Arte (Planilha) *</label>
+              <select id="manual-service-select" class="custom-select" style="width: 100%;" required>
+                <!-- Preenchido dinamicamente via app.js -->
+              </select>
+            </div>
+            <div class="input-group">
+              <label for="manual-price-input">Valor R$ (Planilha) *</label>
+              <input type="number" id="manual-price-input" min="0" max="500" step="1" placeholder="Ex: 35" required>
+            </div>
           </div>
 
           <div class="config-grid" style="margin-top: 14px;">
@@ -554,8 +560,10 @@
               <input type="date" id="manual-date-input" required>
             </div>
             <div class="input-group">
-              <label for="manual-time-input">Horário de Início *</label>
-              <input type="time" id="manual-time-input" required>
+              <label for="manual-time-input">Horário (30 em 30 min da Planilha) *</label>
+              <select id="manual-time-input" class="custom-select" style="width: 100%;" required>
+                <!-- Preenchido dinamicamente com status Livre/Ocupado via app.js -->
+              </select>
             </div>
           </div>
 
@@ -568,7 +576,7 @@
 
           <div class="modal-actions" style="margin-top: 20px;">
             <button type="submit" class="confirm-btn" id="save-manual-booking-btn">
-              <span class="btn-text">Salvar na Agenda</span>
+              <span class="btn-text">✓ Salvar na Agenda e na Planilha</span>
             </button>
             <button type="button" class="btn-close-modal" id="cancel-manual-modal-btn">Cancelar</button>
           </div>
@@ -585,6 +593,6 @@
 
   </div>
 
-  <script src="app.js?v=10"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>
