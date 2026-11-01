@@ -219,7 +219,21 @@ function doPost(e) {
 
     if (insertAfterRow < lastRow && insertAfterRow >= 1) {
       sheet.insertRowAfter(insertAfterRow);
-      sheet.getRange(insertAfterRow + 1, 1, 1, 7).setValues([newRowData]);
+      const targetRow = insertAfterRow + 1;
+      try {
+        sheet.getRange(targetRow, 1, 1, 7).setValues([newRowData]);
+      } catch (valErr) {
+        // Caso algum valor tenha diferença de espaço na Validação de Dados, grava coluna por coluna
+        for (let c = 0; c < 7; c++) {
+          try {
+            sheet.getRange(targetRow, c + 1).setValue(newRowData[c]);
+          } catch (cellErr) {
+            if (c === 4 && String(newRowData[c]).trim() === 'Pé') {
+              sheet.getRange(targetRow, c + 1).setValue('Pé ');
+            }
+          }
+        }
+      }
     } else {
       sheet.appendRow(newRowData);
     }

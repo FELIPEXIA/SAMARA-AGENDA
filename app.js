@@ -228,22 +228,150 @@ function saveStudioConfig() {
 // -------------------------------------------------------------
 // INTEGRAÇÃO COM A PLANILHA GOOGLE DA SAMARA (COLUNAS A até G)
 // -------------------------------------------------------------
+// Lista oficial exata da aba 'VALIDAÇÃO DE DADOS' (Coluna E2:E43) da Planilha da Samara
+const VALID_SHEET_ARTES = [
+  'Pé e Mão',
+  'Pé ',
+  'Mão',
+  'Henna',
+  'Sobrancelhas',
+  'Pé e Mão Henna',
+  'Pé e Mão Sobrancelhas',
+  'Pé Henna',
+  'Pé Sobrancelhas',
+  'Mão e Henna',
+  'Mão Sobrancelhas',
+  'Unha de Gel',
+  'Banho de Gel',
+  'Esmaltação em Gel',
+  'Unha de Gel  Pé Henna',
+  'Unha de Gel Pé Sobrancelhas',
+  'Unha de Gel e Pé',
+  'Unha de Gel e Sobracelhas',
+  'Unha de Gel e Henna',
+  'Banho de Gel Pé e Henna',
+  'Banho de Gel Pé e Sobracelhas',
+  'Banho de Gel e Pé',
+  'Banho de Gel Henna',
+  'Banho de Gel Sobracelhas',
+  'Esmaltação em Gel Pé Henna',
+  'Esmaltação em Gel Pé Sobrancelhas',
+  'Esmaltação em Gel Pé',
+  'Esmaltação em Gel e Henna',
+  'Esmataltação em Gel Sobracelhas',
+  'Manutenção',
+  'Manutenção pé',
+  'Manutenção hena',
+  'Manutenção ',
+  'Pé gel',
+  'Pé gel henna',
+  'Pé gel sobrancelhas',
+  'Pé gel  unha de gel',
+  'Pé gel  e mão',
+  'Pé gel e mão manutenção',
+  'Manutenção e Henna',
+  'Manutenção Pé e Henna',
+  'Manutenção Pé e Sobrancelhas'
+];
+
 function mapServiceToSpreadsheetArte(serviceTitle) {
   const raw = String(serviceTitle || '').trim();
   const map = {
+    'Pé': 'Pé ', // Na aba VALIDAÇÃO DE DADOS da planilha, E3 possui um espaço no final ("Pé ")
+    'Mão': 'Mão',
+    'Pé e Mão': 'Pé e Mão',
+    'Henna': 'Henna',
+    'Sobrancelhas': 'Sobrancelhas',
+    'Unha de Gel': 'Unha de Gel',
+    'Banho de Gel': 'Banho de Gel',
+    'Esmaltação em Gel': 'Esmaltação em Gel',
     'Manutenção de Gel': 'Manutenção',
+    'Manutenção': 'Manutenção',
     'Manutenção e Pé': 'Manutenção pé',
     'Manutenção pé': 'Manutenção pé',
+    'Manutenção e Henna': 'Manutenção e Henna',
     'Manutenção, Pé e Henna': 'Manutenção Pé e Henna',
+    'Manutenção Pé e Henna': 'Manutenção Pé e Henna',
     'Manutenção, Pé e Sobrancelhas': 'Manutenção Pé e Sobrancelhas',
+    'Manutenção Pé e Sobrancelhas': 'Manutenção Pé e Sobrancelhas',
     'Pé com Henna': 'Pé Henna',
-    'Pé com Sobrancelhas': 'Pé e Sobrancelhas',
+    'Pé e Henna': 'Pé Henna',
+    'Pé Henna': 'Pé Henna',
+    'Pé com Sobrancelhas': 'Pé Sobrancelhas',
+    'Pé e Sobrancelhas': 'Pé Sobrancelhas',
+    'Pé Sobrancelhas': 'Pé Sobrancelhas',
     'Mão com Henna': 'Mão e Henna',
-    'Mão com Sobrancelhas': 'Mão e Sobrancelhas',
-    'Pé e Mão com Henna': 'Pé e Mão e Henna',
-    'Pé e Mão com Sobrancelhas': 'Pé e Mão e Sobrancelhas'
+    'Mão e Henna': 'Mão e Henna',
+    'Mão com Sobrancelhas': 'Mão Sobrancelhas',
+    'Mão e Sobrancelhas': 'Mão Sobrancelhas',
+    'Mão Sobrancelhas': 'Mão Sobrancelhas',
+    'Pé e Mão com Henna': 'Pé e Mão Henna',
+    'Pé e Mão e Henna': 'Pé e Mão Henna',
+    'Pé e Mão Henna': 'Pé e Mão Henna',
+    'Pé e Mão com Sobrancelhas': 'Pé e Mão Sobrancelhas',
+    'Pé e Mão e Sobrancelhas': 'Pé e Mão Sobrancelhas',
+    'Pé e Mão Sobrancelhas': 'Pé e Mão Sobrancelhas',
+    'Unha de Gel e Pé': 'Unha de Gel e Pé',
+    'Unha de Gel e Henna': 'Unha de Gel e Henna',
+    'Unha de Gel e Sobrancelhas': 'Unha de Gel e Sobracelhas',
+    'Unha de Gel, Pé e Henna': 'Unha de Gel  Pé Henna',
+    'Unha de Gel, Pé e Sobrancelhas': 'Unha de Gel Pé Sobrancelhas',
+    'Banho de Gel e Pé': 'Banho de Gel e Pé',
+    'Banho de Gel e Henna': 'Banho de Gel Henna',
+    'Banho de Gel e Sobrancelhas': 'Banho de Gel Sobracelhas',
+    'Banho de Gel, Pé e Henna': 'Banho de Gel Pé e Henna',
+    'Banho de Gel, Pé e Sobrancelhas': 'Banho de Gel Pé e Sobracelhas',
+    'Esmaltação em Gel e Pé': 'Esmaltação em Gel Pé',
+    'Esmaltação em Gel e Henna': 'Esmaltação em Gel e Henna',
+    'Esmaltação em Gel e Sobrancelhas': 'Esmataltação em Gel Sobracelhas',
+    'Esmaltação em Gel, Pé e Henna': 'Esmaltação em Gel Pé Henna',
+    'Esmaltação em Gel, Pé e Sobrancelhas': 'Esmaltação em Gel Pé Sobrancelhas'
   };
-  return map[raw] || raw;
+
+  if (map[raw]) return map[raw];
+  if (VALID_SHEET_ARTES.includes(raw)) return raw;
+
+  // Se for um combo personalizado selecionado na Ideia A, encontrar o item válido mais próximo na planilha
+  const foundTrimmed = VALID_SHEET_ARTES.find(v => v.trim().toLowerCase() === raw.toLowerCase());
+  if (foundTrimmed) return foundTrimmed;
+
+  const lower = raw.toLowerCase();
+  if (lower.includes('manutenção') && lower.includes('pé') && lower.includes('henna')) return 'Manutenção Pé e Henna';
+  if (lower.includes('manutenção') && lower.includes('pé') && lower.includes('sobrancelha')) return 'Manutenção Pé e Sobrancelhas';
+  if (lower.includes('manutenção') && lower.includes('pé')) return 'Manutenção pé';
+  if (lower.includes('manutenção') && lower.includes('henna')) return 'Manutenção e Henna';
+  if (lower.includes('manutenção')) return 'Manutenção';
+  if (lower.includes('unha de gel') && lower.includes('pé') && lower.includes('henna')) return 'Unha de Gel  Pé Henna';
+  if (lower.includes('unha de gel') && lower.includes('pé') && lower.includes('sobrancelha')) return 'Unha de Gel Pé Sobrancelhas';
+  if (lower.includes('unha de gel') && lower.includes('pé')) return 'Unha de Gel e Pé';
+  if (lower.includes('unha de gel') && lower.includes('henna')) return 'Unha de Gel e Henna';
+  if (lower.includes('unha de gel') && lower.includes('sobrancelha')) return 'Unha de Gel e Sobracelhas';
+  if (lower.includes('unha de gel')) return 'Unha de Gel';
+  if (lower.includes('banho de gel') && lower.includes('pé') && lower.includes('henna')) return 'Banho de Gel Pé e Henna';
+  if (lower.includes('banho de gel') && lower.includes('pé') && lower.includes('sobrancelha')) return 'Banho de Gel Pé e Sobracelhas';
+  if (lower.includes('banho de gel') && lower.includes('pé')) return 'Banho de Gel e Pé';
+  if (lower.includes('banho de gel') && lower.includes('henna')) return 'Banho de Gel Henna';
+  if (lower.includes('banho de gel') && lower.includes('sobrancelha')) return 'Banho de Gel Sobracelhas';
+  if (lower.includes('banho de gel')) return 'Banho de Gel';
+  if (lower.includes('esmaltação') && lower.includes('pé') && lower.includes('henna')) return 'Esmaltação em Gel Pé Henna';
+  if (lower.includes('esmaltação') && lower.includes('pé') && lower.includes('sobrancelha')) return 'Esmaltação em Gel Pé Sobrancelhas';
+  if (lower.includes('esmaltação') && lower.includes('pé')) return 'Esmaltação em Gel Pé';
+  if (lower.includes('esmaltação') && lower.includes('henna')) return 'Esmaltação em Gel e Henna';
+  if (lower.includes('esmaltação') && lower.includes('sobrancelha')) return 'Esmataltação em Gel Sobracelhas';
+  if (lower.includes('esmaltação')) return 'Esmaltação em Gel';
+  if (lower.includes('pé') && lower.includes('mão') && lower.includes('henna')) return 'Pé e Mão Henna';
+  if (lower.includes('pé') && lower.includes('mão') && lower.includes('sobrancelha')) return 'Pé e Mão Sobrancelhas';
+  if (lower.includes('pé') && lower.includes('mão')) return 'Pé e Mão';
+  if (lower.includes('pé') && lower.includes('henna')) return 'Pé Henna';
+  if (lower.includes('pé') && lower.includes('sobrancelha')) return 'Pé Sobrancelhas';
+  if (lower.includes('mão') && lower.includes('henna')) return 'Mão e Henna';
+  if (lower.includes('mão') && lower.includes('sobrancelha')) return 'Mão Sobrancelhas';
+  if (lower.includes('pé')) return 'Pé ';
+  if (lower.includes('mão')) return 'Mão';
+  if (lower.includes('henna')) return 'Henna';
+  if (lower.includes('sobrancelha')) return 'Sobrancelhas';
+
+  return 'Manutenção';
 }
 
 function estimateDurationFromArte(arteTitle) {
