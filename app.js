@@ -20,8 +20,9 @@ if (window.supabase) {
   }
 }
 
-// ID Oficial da Planilha Google da Samara
+// ID Oficial da Planilha Google da Samara e Conector Google Apps Script
 const SAMARA_SPREADSHEET_ID = '1QojXTSpQl6D4jp3_CG6aDKYOb-vlukehjpfrN0kNgCY';
+const DEFAULT_SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbwRWKeLMMLvbpeZ2CCINitbLJO3RMX5hTKmVblEuZzDtDJWTVBrmcEc66HAF6xA5J_CfQ/exec';
 const SAMARA_WEEKDAYS = ['Dom', 'Seg', 'Terc', 'Quart', 'Quint', 'Sext', 'Sab'];
 
 // Catálogo Base (Fallback e Inicialização + Combos da Planilha da Samara)
@@ -133,7 +134,7 @@ const state = {
     address: 'Rua Nossa Senhora das Graças, Santo Antônio, Cariacica',
     pin: '1234',
     defaultSheetStatus: 'Aguardando',
-    sheetsWebhookUrl: ''
+    sheetsWebhookUrl: DEFAULT_SHEETS_WEBHOOK_URL
   },
   lastConfirmedBooking: null
 };
@@ -182,6 +183,9 @@ function loadStudioConfig() {
   if (!state.studioConfig.defaultSheetStatus) {
     state.studioConfig.defaultSheetStatus = 'Aguardando';
   }
+  if (!state.studioConfig.sheetsWebhookUrl) {
+    state.studioConfig.sheetsWebhookUrl = DEFAULT_SHEETS_WEBHOOK_URL;
+  }
 
   localStorage.setItem(STORAGE_CONFIG, JSON.stringify(state.studioConfig));
 
@@ -197,7 +201,7 @@ function loadStudioConfig() {
   if (addrInput) addrInput.value = state.studioConfig.address;
   if (pinInput) pinInput.value = state.studioConfig.pin;
   if (statusSelect) statusSelect.value = state.studioConfig.defaultSheetStatus || 'Aguardando';
-  if (webhookInput) webhookInput.value = state.studioConfig.sheetsWebhookUrl || '';
+  if (webhookInput) webhookInput.value = state.studioConfig.sheetsWebhookUrl || DEFAULT_SHEETS_WEBHOOK_URL;
 }
 
 function saveStudioConfig() {
@@ -214,7 +218,7 @@ function saveStudioConfig() {
     address: addrInput.value.trim() || 'Rua Nossa Senhora das Graças, Santo Antônio, Cariacica',
     pin: pinInput.value.trim() || '1234',
     defaultSheetStatus: statusSelect ? statusSelect.value : 'Aguardando',
-    sheetsWebhookUrl: webhookInput ? webhookInput.value.trim() : ''
+    sheetsWebhookUrl: (webhookInput && webhookInput.value.trim()) ? webhookInput.value.trim() : DEFAULT_SHEETS_WEBHOOK_URL
   };
 
   localStorage.setItem(STORAGE_CONFIG, JSON.stringify(state.studioConfig));
@@ -291,13 +295,21 @@ function formatAppointmentForSheetColumns(appt) {
 function mergeSheetBookingsIntoState(sheetBookings) {
   if (!Array.isArray(sheetBookings) || sheetBookings.length === 0) return;
 
+  // Manter apenas agendamentos da planilha de Novembro/2026 em diante (evitar abas antigas de 2024/2025)
+  state.appointments = state.appointments.filter(a => {
+    if (a.source === 'google_sheets' && a.date && a.date < '2026-11-01') return false;
+    return true;
+  });
+
+  const activeSheetBookings = sheetBookings.filter(sb => sb && sb.date && sb.date >= '2026-11-01');
+
   const existingByKey = new Map();
   state.appointments.forEach(a => {
     const key = `${a.date}_${(a.time || '').slice(0, 5)}_${(a.clientName || '').trim().toLowerCase()}`;
     existingByKey.set(key, a);
   });
 
-  sheetBookings.forEach(sb => {
+  activeSheetBookings.forEach(sb => {
     const cleanTime = (sb.time || '07:00').slice(0, 5);
     const key = `${sb.date}_${cleanTime}_${(sb.clientName || '').trim().toLowerCase()}`;
     const durMin = estimateDurationFromArte(sb.serviceTitle);
@@ -342,8 +354,8 @@ async function syncFromGoogleSheets() {
   // 1. Garantir os agendamentos conhecidos da aba NOVEMBRO 2026 da planilha da Samara
   mergeSheetBookingsIntoState(INITIAL_SHEET_BOOKINGS_NOV_2026);
 
-  // 2. Se houver Webhook do Google Apps Script configurado, buscar todas as abas em tempo real
-  const webhookUrl = state.studioConfig.sheetsWebhookUrl;
+  // 2. Buscar todas as abas em tempo real via Conector Google Apps Script
+  const webhookUrl = state.studioConfig.sheetsWebhookUrl || DEFAULT_SHEETS_WEBHOOK_URL;
   if (webhookUrl && webhookUrl.startsWith('https://script.google.com/')) {
     try {
       const resp = await fetch(webhookUrl, { method: 'GET', redirect: 'follow' });
@@ -364,7 +376,7 @@ async function syncFromGoogleSheets() {
 
 async function syncAppointmentToGoogleSheets(appt, action = 'upsert') {
   const cols = formatAppointmentForSheetColumns(appt);
-  const webhookUrl = state.studioConfig.sheetsWebhookUrl;
+  const webhookUrl = state.studioConfig.sheetsWebhookUrl || DEFAULT_SHEETS_WEBHOOK_URL;
 
   if (!webhookUrl || !webhookUrl.startsWith('https://script.google.com/')) {
     console.info('ℹ️ Dados formatados para a Planilha da Samara (Col A-G):', cols);
