@@ -1,4 +1,4 @@
-const CACHE_NAME = 'samara-studio-v9';
+const CACHE_NAME = 'samara-studio-v10';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -47,7 +47,7 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Interceptação de requisições: Stale-While-Revalidate para assets locais e Network-first para APIs
+// Interceptação de requisições: Network-First para sempre carregar a versão mais recente do site
 self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
 
@@ -61,9 +61,8 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      // Retorna do cache se existir e busca atualização em segundo plano
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
+    fetch(event.request)
+      .then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -71,12 +70,7 @@ self.addEventListener('fetch', (event) => {
           });
         }
         return networkResponse;
-      }).catch(() => {
-        // Fallback em caso de offline total
-        return cachedResponse;
-      });
-
-      return cachedResponse || fetchPromise;
-    })
+      })
+      .catch(() => caches.match(event.request))
   );
 });

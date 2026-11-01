@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=10">
   <!-- Supabase CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -298,31 +298,28 @@
 
       <!-- Aba 1: Tabela de Agendamentos -->
       <section class="admin-tab-content active" id="admin-content-agenda">
-        <!-- Destaque Fixo de Solicitações Aguardando Resposta -->
-        <div id="admin-pending-spotlight" style="display: none; margin-bottom: 18px;"></div>
-
         <div class="admin-table-container">
           <div class="admin-table-header">
-            <h3 class="table-title">Lista de Agendamentos</h3>
+            <div>
+              <h3 class="table-title">Solicitações do Site</h3>
+              <p class="section-desc">Gerencie os pedidos feitos pelo site (a agenda completa fica na Planilha Google)</p>
+            </div>
             <div class="table-controls">
               <button class="btn-primary-action" id="btn-open-manual-booking" title="Agendar manualmente para uma cliente">
                 <span>➕</span> Novo Agendamento
               </button>
-              <select id="admin-date-filter" class="custom-select">
-                <option value="week" selected>📅 Esta Semana</option>
-                <option value="today">📌 Apenas Hoje</option>
-                <option value="tomorrow">☀️ Amanhã</option>
-                <option value="next15">🗓️ Próximos 15 Dias</option>
-                <option value="month">📆 Mês Atual</option>
-                <option value="all">🗂️ Todas as Datas</option>
-              </select>
               <select id="admin-status-filter" class="custom-select">
-                <option value="all">Todos os Status</option>
-                <option value="Aguardando">⏳ Aguardando (Site)</option>
-                <option value="site-only">🌐 Só Pedidos do Site</option>
+                <option value="Aguardando" selected>⏳ Aguardando</option>
                 <option value="Confirmado">🟢 Confirmados</option>
                 <option value="Rejeitado">🔵 Rejeitados</option>
                 <option value="Cancelado">🔴 Cancelados</option>
+              </select>
+              <select id="admin-date-filter" class="custom-select">
+                <option value="all" selected>📅 Todas as Datas</option>
+                <option value="today">📌 Apenas Hoje</option>
+                <option value="tomorrow">☀️ Amanhã</option>
+                <option value="week">🗓️ Esta Semana</option>
+                <option value="month">📆 Mês Atual</option>
               </select>
               <a href="https://docs.google.com/spreadsheets/d/1QojXTSpQl6D4jp3_CG6aDKYOb-vlukehjpfrN0kNgCY/edit?gid=653704266#gid=653704266" target="_blank" class="btn-refresh" style="text-decoration: none;" title="Abrir Planilha Google Oficial da Samara">📗 Abrir Planilha Google</a>
               <button class="btn-refresh" id="btn-export-csv" title="Exportar para Excel / CSV">📊 Baixar CSV</button>
@@ -588,6 +585,6 @@
 
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>

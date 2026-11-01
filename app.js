@@ -124,7 +124,7 @@ const state = {
   clientSearchQuery: '',
   activeCategory: 'all',
   layoutMode: 'idea-b',
-  adminFilter: 'all',
+  adminFilter: 'Aguardando',
   isAdminView: false,
   isAdminAuthenticated: false,
   pinInput: '',
@@ -459,11 +459,13 @@ function mergeSheetBookingsIntoState(sheetBookings, replaceSheetEntries = false)
 
     if (existingByKey.has(key)) {
       const target = existingByKey.get(key);
-      if (sb.status && !(target.status === 'Rejeitado' && sb.status === 'Confirmado')) {
+      if (target.source !== 'site') {
+        if (sb.status) target.status = sb.status;
+        target.source = 'google_sheets';
+      } else if (sb.status === 'Cancelado' || sb.status === 'Rejeitado') {
         target.status = sb.status;
       }
       if (!target.endTime) target.endTime = calcEnd;
-      target.source = target.source || 'google_sheets';
     } else {
       state.appointments.push({
         id: sb.id || ('sheet-' + sb.date.replace(/-/g, '') + '-' + cleanTime.replace(':', '')),
@@ -623,7 +625,8 @@ async function loadAppointments() {
           endTime: dbRow.end_time || null,
           price: Number(dbRow.price),
           notes: dbRow.notes || '',
-          status: dbRow.status || 'Confirmado',
+          status: dbRow.status || 'Aguardando',
+          source: 'site',
           createdAt: dbRow.created_at
         }));
         localStorage.setItem(STORAGE_APPTS, JSON.stringify(state.appointments));
@@ -1657,9 +1660,9 @@ function exitAdminView() {
 }
 
 // -------------------------------------------------------------
-// RENDERIZAÇÃO DO PAINEL ADMIN (OTIMIZADA E LEVE)
+// RENDERIZAÇÃO DO PAINEL ADMIN (SOMENTE SOLICITAÇÕES DO SITE POR STATUS)
 // -------------------------------------------------------------
-state.adminDateFilter = 'week';
+state.adminDateFilter = 'all';
 state.adminPageLimit = 10;
 
 function createAppointmentCardDOM(item) {
@@ -1668,13 +1671,9 @@ function createAppointmentCardDOM(item) {
   const card = document.createElement('div');
   card.className = 'appointment-item';
 
-  const sheetBadge = item.source === 'google_sheets'
-    ? `<span class="sheet-source-badge" title="Sincronizado com a Planilha Google">📗 Planilha</span>`
-    : `<span class="sheet-source-badge" style="background: rgba(244, 114, 182, 0.16); color: #fbcfe8; border-color: rgba(244, 114, 182, 0.35);" title="Solicitado pelo Site">🌐 Site</span>`;
-
   card.innerHTML = `
     <div class="appt-client-info">
-      <span class="appt-name">${item.clientName}${sheetBadge}</span>
+      <span class="appt-name">${item.clientName}<span class="sheet-source-badge" style="background: rgba(244, 114, 182, 0.16); color: #fbcfe8; border-color: rgba(244, 114, 182, 0.35);" title="Solicitado pelo Site">🌐 Site</span></span>
       <span class="appt-phone">📞 ${item.clientPhone}</span>
     </div>
     <div class="appt-service-info">
@@ -1706,7 +1705,6 @@ window.loadMoreAdminAppointments = function() {
 
 function renderAdminAppointments() {
   const list = document.getElementById('admin-appointments-list');
-  const spotlight = document.getElementById('admin-pending-spotlight');
   const metricToday = document.getElementById('metric-today-count');
   const metricActive = document.getElementById('metric-total-active');
   const metricRevenue = document.getElementById('metric-projected-revenue');
@@ -1725,55 +1723,29 @@ function renderAdminAppointments() {
   next7.setDate(next7.getDate() + 7);
   const next7Str = formatDateISO(next7);
 
-  const next15 = new Date(now);
-  next15.setDate(next15.getDate() + 15);
-  const next15Str = formatDateISO(next15);
-
   const currentMonthPrefix = todayStr.slice(0, 7); // YYYY-MM
 
-  const totalToday = state.appointments.filter(a => a.date === todayStr && (a.status === 'Confirmado' || a.status === 'Aguardando')).length;
-  const totalActiveMonth = state.appointments.filter(a => a.date && a.date.startsWith(currentMonthPrefix) && (a.status === 'Confirmado' || a.status === 'Aguardando')).length;
-  const projectedRevenueMonth = state.appointments
-    .filter(a => a.date && a.date.startsWith(currentMonthPrefix) && (a.status === 'Confirmado' || a.status === 'Aguardando'))
+  // Somente solicitações feitas pelo Site (a agenda da planilha fica apenas nos bastidores para bloquear horários)
+  const siteAppointments = state.appointments.filter(a => a.source !== 'google_sheets');
+
+  const pendingCount = siteAppointments.filter(a => a.status === 'Aguardando').length;
+  const confirmedSiteCount = siteAppointments.filter(a => a.status === 'Confirmado').length;
+  const siteRevenue = siteAppointments
+    .filter(a => a.status === 'Confirmado' || a.status === 'Aguardando')
     .reduce((sum, a) => sum + (a.price || 0), 0);
 
-  if (metricToday) metricToday.textContent = totalToday;
-  if (metricActive) metricActive.textContent = totalActiveMonth;
-  if (metricRevenue) metricRevenue.textContent = `R$ ${projectedRevenueMonth.toFixed(2).replace('.', ',')}`;
+  if (metricToday) metricToday.textContent = pendingCount;
+  if (metricActive) metricActive.textContent = confirmedSiteCount;
+  if (metricRevenue) metricRevenue.textContent = `R$ ${siteRevenue.toFixed(2).replace('.', ',')}`;
 
-  // 1. Destaque Fixo no Topo: Solicitações "Aguardando" (Prioridade Zero para a Samara)
-  const pendingList = state.appointments.filter(a => a.status === 'Aguardando');
-  if (spotlight) {
-    if (pendingList.length > 0 && state.adminFilter !== 'Aguardando') {
-      spotlight.style.display = 'block';
-      spotlight.innerHTML = `
-        <div class="admin-table-container" style="border: 1px solid rgba(250, 204, 21, 0.45); background: linear-gradient(145deg, rgba(66, 48, 16, 0.55) 0%, rgba(36, 16, 28, 0.92) 100%);">
-          <div class="admin-table-header" style="margin-bottom: 12px;">
-            <div>
-              <h3 class="table-title" style="color: #fde047;">⏳ Solicitações Aguardando Resposta (${pendingList.length})</h3>
-              <p class="section-desc">Clientes que solicitaram pelo site e aguardam você Aceitar ou Rejeitar</p>
-            </div>
-          </div>
-          <div class="appointments-list" id="admin-pending-spotlight-list"></div>
-        </div>
-      `;
-      const spotListEl = document.getElementById('admin-pending-spotlight-list');
-      pendingList.forEach(item => {
-        spotListEl.appendChild(createAppointmentCardDOM(item));
-      });
-    } else {
-      spotlight.style.display = 'none';
-      spotlight.innerHTML = '';
-    }
+  // Garantir que o filtro de status comece em "Aguardando" (nunca carregando tudo de uma vez)
+  const activeStatus = (!state.adminFilter || state.adminFilter === 'all') ? 'Aguardando' : state.adminFilter;
+  const statusSelect = document.getElementById('admin-status-filter');
+  if (statusSelect && statusSelect.value !== activeStatus) {
+    statusSelect.value = activeStatus;
   }
 
-  // 2. Filtragem por status/origem e por período
-  let filtered = state.appointments;
-  if (state.adminFilter === 'site-only') {
-    filtered = filtered.filter(a => a.source !== 'google_sheets');
-  } else if (state.adminFilter !== 'all') {
-    filtered = filtered.filter(a => a.status === state.adminFilter);
-  }
+  let filtered = siteAppointments.filter(a => a.status === activeStatus);
 
   if (state.adminDateFilter === 'today') {
     filtered = filtered.filter(a => a.date === todayStr);
@@ -1781,8 +1753,6 @@ function renderAdminAppointments() {
     filtered = filtered.filter(a => a.date === tomorrowStr);
   } else if (state.adminDateFilter === 'week') {
     filtered = filtered.filter(a => a.date >= todayStr && a.date <= next7Str);
-  } else if (state.adminDateFilter === 'next15') {
-    filtered = filtered.filter(a => a.date >= todayStr && a.date <= next15Str);
   } else if (state.adminDateFilter === 'month') {
     filtered = filtered.filter(a => a.date && a.date.startsWith(currentMonthPrefix));
   }
@@ -1790,14 +1760,13 @@ function renderAdminAppointments() {
   if (filtered.length === 0) {
     list.innerHTML = `
       <div style="text-align: center; color: var(--text-faint); padding: 28px;">
-        <p style="margin-bottom: 10px;">Nenhum agendamento encontrado neste período.</p>
-        ${state.adminDateFilter !== 'all' ? `<button class="btn-refresh" onclick="document.getElementById('admin-date-filter').value='all'; state.adminDateFilter='all'; renderAdminAppointments();">🗂️ Ver Todos os Meses</button>` : ''}
+        <p style="margin-bottom: 6px;">Nenhuma solicitação do site com status <strong>"${activeStatus}"</strong> no momento.</p>
       </div>
     `;
     return;
   }
 
-  // 3. Paginação leve (10 por vez) para não pesar a memória do celular/computador
+  // Paginação leve (10 por vez)
   const limit = state.adminPageLimit || 10;
   const visibleItems = filtered.slice(0, limit);
 
@@ -1810,7 +1779,7 @@ function renderAdminAppointments() {
     moreWrap.style.cssText = 'text-align: center; margin-top: 16px; padding-top: 8px;';
     moreWrap.innerHTML = `
       <button class="btn-refresh" onclick="loadMoreAdminAppointments()" style="padding: 10px 22px; font-weight: 600;">
-        ➕ Mostrar mais agendamentos (Exibindo ${visibleItems.length} de ${filtered.length})
+        ➕ Mostrar mais (Exibindo ${visibleItems.length} de ${filtered.length})
       </button>
     `;
     list.appendChild(moreWrap);
