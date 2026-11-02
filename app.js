@@ -1480,51 +1480,48 @@ async function confirmBooking() {
   }
 }
 
-function formatFullDateBR(dateStr) {
-  if (!dateStr) return '';
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const dateObj = new Date(y, (m || 1) - 1, d || 1, 12, 0, 0);
-  const dias = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
-  const diaSemana = dias[dateObj.getDay()] || '';
-  const dd = String(d).padStart(2, '0');
-  const mm = String(m).padStart(2, '0');
-  return `${diaSemana}, ${dd}/${mm}/${y}`;
-}
-
 // -------------------------------------------------------------
 // MODAL DE SUCESSO, WHATSAPP & GOOGLE AGENDA
 // -------------------------------------------------------------
 function openSuccessModal(booking) {
   const modal = document.getElementById('success-modal');
   const ticketDetails = document.getElementById('modal-ticket-details');
-  const fullDate = formatFullDateBR(booking.date);
+  const [y, m, d] = booking.date.split('-');
   const service = state.services.find(s => s.id === booking.serviceId);
   const durationLabel = booking.durationLabel || (service ? service.durationLabel : 'Tempo estimado');
 
   ticketDetails.innerHTML = `
-    <div class="modal-ticket-item" style="border-bottom: 1px dashed rgba(250, 204, 21, 0.4); padding-bottom: 8px;">
-      <span style="font-size: 14px; color: var(--text-muted);">Status do Pedido:</span>
-      <span style="color: #fde047; font-weight: 700; font-size: 14px;">⏳ Aguardando Confirmação</span>
+    <div class="modal-ticket-item">
+      <span>Código do Agendamento:</span>
+      <span>#${booking.id}</span>
     </div>
     <div class="modal-ticket-item">
       <span>Cliente:</span>
-      <span style="font-weight: 600;">${booking.clientName}</span>
+      <span>${booking.clientName}</span>
     </div>
     <div class="modal-ticket-item">
-      <span>Procedimento:</span>
-      <span style="font-weight: 600;">${booking.serviceTitle}</span>
+      <span>Procedimento(s):</span>
+      <span>${booking.serviceTitle}</span>
     </div>
     <div class="modal-ticket-item">
-      <span>Data Solicitada:</span>
-      <span style="font-weight: 600; color: #fbcfe8;">${fullDate}</span>
+      <span>Duração Estimada:</span>
+      <span>${durationLabel}</span>
     </div>
     <div class="modal-ticket-item">
-      <span>Horário:</span>
-      <span style="font-weight: 600;">${booking.time}h às ${booking.endTime || '-'}h (${durationLabel})</span>
+      <span>Data & Horário:</span>
+      <span>${d}/${m}/${y} • ${booking.time}h às ${booking.endTime || '-'}h</span>
     </div>
     <div class="modal-ticket-item">
-      <span>Valor Estimado:</span>
-      <span style="font-weight: 700; color: #86efac; font-size: 15px;">R$ ${booking.price.toFixed(2).replace('.', ',')}</span>
+      <span>Valor a Pagar:</span>
+      <span>R$ ${booking.price.toFixed(2).replace('.', ',')}</span>
+    </div>
+    <div class="modal-ticket-item">
+      <span>Pagamento:</span>
+      <span style="color: var(--accent-green);">Presencial no Studio</span>
+    </div>
+    <div class="modal-ticket-item">
+      <span>Endereço:</span>
+      <span style="color: var(--primary-rose-light); font-size: 12.5px;">${state.studioConfig.address}</span>
     </div>
   `;
 
@@ -1534,17 +1531,21 @@ function openSuccessModal(booking) {
 function sendWhatsAppMessage() {
   if (!state.lastConfirmedBooking) return;
   const b = state.lastConfirmedBooking;
-  const fullDate = formatFullDateBR(b.date);
+  const [y, m, d] = b.date.split('-');
+  const service = state.services.find(s => s.id === b.serviceId);
+  const durLabel = b.durationLabel || (service ? service.durationLabel : '');
 
-  const msg = `⏳ *PEDIDO DE HORÁRIO*%0A%0A` +
-    `Olá Samara! Gostaria de agendar no Studio:%0A%0A` +
-    `💅 *Procedimento:* ${encodeURIComponent(b.serviceTitle)}%0A` +
-    `📅 *Data:* ${encodeURIComponent(fullDate)}%0A` +
-    `⏰ *Horário:* ${b.time}h%0A` +
+  const msg = `✨ *Olá Samara! Novo agendamento realizado no site:*%0A%0A` +
+    `👤 *Cliente:* ${encodeURIComponent(b.clientName)}%0A` +
+    `💅 *Procedimento(s):* ${encodeURIComponent(b.serviceTitle)}%0A` +
+    (durLabel ? `⏱️ *Duração:* ${encodeURIComponent(durLabel)}%0A` : '') +
+    `📅 *Data:* ${d}/${m}/${y}%0A` +
+    `⏰ *Horário:* ${b.time}h às ${b.endTime || ''}h%0A` +
     `💰 *Valor:* R$ ${b.price.toFixed(2).replace('.', ',')}%0A` +
-    (b.notes ? `📝 *Obs:* ${encodeURIComponent(b.notes)}%0A` : '') +
-    `%0A*Você tem esse horário disponível?*%0AFico no aguardo da sua confirmação! 😊%0A%0A` +
-    `— *${encodeURIComponent(b.clientName)}*`;
+    `📍 *Local:* ${encodeURIComponent(state.studioConfig.address || 'Rua Nossa Senhora das Graças, Santo Antônio, Cariacica')}%0A` +
+    `💳 *Pagamento:* Presencial no Studio%0A` +
+    (b.notes ? `📝 *Observação:* ${encodeURIComponent(b.notes)}%0A` : '') +
+    `%0A_Aguardando sua confirmação!_`;
 
   const phone = state.studioConfig.whatsapp || '5527988459016';
   const url = `https://wa.me/${phone}?text=${msg}`;
@@ -1687,15 +1688,12 @@ function createAppointmentCardDOM(item) {
       <span class="appt-status-badge ${(item.status || 'Confirmado').toLowerCase()}">${item.status}</span>
     </div>
     <div class="appt-actions">
+      <button class="appt-btn whatsapp" onclick="sendClientReminder('${item.id}')" title="Enviar lembrete pelo WhatsApp">💬 Lembrete</button>
       ${item.status === 'Aguardando' ? `
-        <button class="appt-btn confirm-action" onclick="handleAdminAcceptBooking('${item.id}')" title="Aceitar agendamento (Pinta de Verde na Planilha)">✓ Aceitar</button>
-        <button class="appt-btn reject-action" onclick="handleAdminRejectBooking('${item.id}')" title="Rejeitar solicitação e liberar horário (Pinta de Azul na Planilha)">✕ Rejeitar</button>
+        <button class="appt-btn confirm-action" onclick="updateAppointmentStatus('${item.id}', 'Confirmado')" title="Aceitar agendamento (Pinta de Verde na Planilha)">✓ Aceitar</button>
+        <button class="appt-btn reject-action" onclick="updateAppointmentStatus('${item.id}', 'Rejeitado')" title="Rejeitar solicitação e liberar horário (Pinta de Azul na Planilha)">✕ Rejeitar</button>
       ` : item.status === 'Confirmado' ? `
-        <button class="appt-btn whatsapp" onclick="sendClientConfirmationWhatsApp('${item.id}')" title="Enviar Confirmação Oficial pelo WhatsApp">📲 Avisar no Zap</button>
         <button class="appt-btn danger" onclick="updateAppointmentStatus('${item.id}', 'Cancelado')" title="Cancelar agendamento e liberar horário (Pinta de Vermelho na Planilha)">✕ Cancelar</button>
-      ` : item.status === 'Rejeitado' ? `
-        <button class="appt-btn whatsapp" onclick="sendClientRejectionWhatsApp('${item.id}')" title="Avisar a cliente com carinho pelo WhatsApp">📲 Avisar no Zap</button>
-        <button class="appt-btn" onclick="deleteAppointment('${item.id}')">🗑️ Excluir</button>
       ` : `
         <button class="appt-btn" onclick="deleteAppointment('${item.id}')">🗑️ Excluir</button>
       `}
@@ -1791,60 +1789,6 @@ function renderAdminAppointments() {
     list.appendChild(moreWrap);
   }
 }
-
-// Ações de Aceitar / Rejeitar com envio de WhatsApp à Cliente
-window.handleAdminAcceptBooking = async function(apptId) {
-  await updateAppointmentStatusDB(apptId, 'Confirmado');
-  showToast('✓ Agendamento Aceito! Enviando confirmação à cliente...');
-  setTimeout(() => {
-    sendClientConfirmationWhatsApp(apptId);
-  }, 400);
-};
-
-window.handleAdminRejectBooking = async function(apptId) {
-  await updateAppointmentStatusDB(apptId, 'Rejeitado');
-  showToast('✓ Solicitação Rejeitada. Horário liberado na agenda.');
-  setTimeout(() => {
-    sendClientRejectionWhatsApp(apptId);
-  }, 400);
-};
-
-window.sendClientConfirmationWhatsApp = function(apptId) {
-  const item = state.appointments.find(a => a.id === apptId);
-  if (!item) return;
-
-  const fullDate = formatFullDateBR(item.date);
-  const cleanPhone = item.clientPhone.replace(/\D/g, '');
-  const phoneTarget = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
-
-  const msg = `✅ *HORÁRIO CONFIRMADO!*%0A%0A` +
-    `Olá ${encodeURIComponent(item.clientName)}! Tudo bem?%0A` +
-    `Seu horário no *Studio Samara* foi confirmado com sucesso:%0A%0A` +
-    `💅 *Procedimento:* ${encodeURIComponent(item.serviceTitle)}%0A` +
-    `📅 *Data:* ${encodeURIComponent(fullDate)}%0A` +
-    `⏰ *Horário:* ${item.time}h às ${item.endTime || ''}h%0A` +
-    `💰 *Valor:* R$ ${Number(item.price || 0).toFixed(2).replace('.', ',')} (presencial no studio)%0A` +
-    `📍 *Local:* ${encodeURIComponent(state.studioConfig.address || 'Rua Nossa Senhora das Graças, Santo Antônio, Cariacica')}%0A%0A` +
-    `Te espero com todo carinho! Qualquer dúvida, só me avisar aqui. 💖`;
-
-  window.open(`https://wa.me/${phoneTarget}?text=${msg}`, '_blank');
-};
-
-window.sendClientRejectionWhatsApp = function(apptId) {
-  const item = state.appointments.find(a => a.id === apptId);
-  if (!item) return;
-
-  const fullDate = formatFullDateBR(item.date);
-  const cleanPhone = item.clientPhone.replace(/\D/g, '');
-  const phoneTarget = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
-
-  const msg = `Olá ${encodeURIComponent(item.clientName)}! Tudo bem? 💖%0A%0A` +
-    `Vi seu pedido para *${encodeURIComponent(fullDate)}* às *${item.time}h*.%0A` +
-    `Infelizmente não vou conseguir te atender nesse horário específico.%0A%0A` +
-    `Podemos combinar outro dia ou horário para você? Me avise por aqui qual outro momento fica bom! 😊`;
-
-  window.open(`https://wa.me/${phoneTarget}?text=${msg}`, '_blank');
-};
 
 // Enviar Lembrete no WhatsApp da Cliente
 window.sendClientReminder = function(apptId) {
