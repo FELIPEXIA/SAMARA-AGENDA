@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=12">
+  <link rel="stylesheet" href="style.css?v=13">
   <!-- Supabase CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -497,25 +497,42 @@
       </div>
     </div>
 
-    <!-- MODAL DE SUCESSO DO AGENDAMENTO -->
+    <!-- MODAL DE SUCESSO DO PEDIDO DE AGENDAMENTO -->
     <div class="modal-overlay" id="success-modal">
-      <div class="modal-box">
-        <div class="modal-badge-success">✓</div>
-        <h3 class="modal-title">Agendamento Confirmado!</h3>
-        <p class="modal-desc">Sua sessão foi salva e registrada diretamente na agenda da Samara.</p>
+      <div class="modal-box modal-success-enhanced">
+        <div class="modal-badge-waiting">⏳</div>
+        <h3 class="modal-title" id="modal-success-title" style="color: #fde047;">Pedido Enviado com Sucesso!</h3>
+        <p class="modal-desc" id="modal-success-subtitle" style="font-size: 15px; color: #fdf2f8;">
+          Quase lá! Seu horário foi pré-reservado. Para garantir sua vaga, envie a mensagem no WhatsApp da Samara abaixo:
+        </p>
+
+        <!-- Etapas visuais bem claras para qualquer idade -->
+        <div class="booking-steps-progress">
+          <div class="step-progress-item done">
+            <span class="step-prog-icon">✓</span>
+            <span class="step-prog-label">1. Pedido Feito</span>
+          </div>
+          <div class="step-progress-arrow">➔</div>
+          <div class="step-progress-item current">
+            <span class="step-prog-icon">⏳</span>
+            <span class="step-prog-label">2. Aguardando Samara</span>
+          </div>
+          <div class="step-progress-arrow">➔</div>
+          <div class="step-progress-item pending">
+            <span class="step-prog-icon">📅</span>
+            <span class="step-prog-label">3. Confirmado</span>
+          </div>
+        </div>
 
         <div class="modal-ticket" id="modal-ticket-details">
           <!-- Detalhes do comprovante preenchidos via app.js -->
         </div>
 
         <div class="modal-actions">
-          <button class="btn-whatsapp" id="whatsapp-confirm-btn">
-            <span class="wa-icon">💬</span> Enviar no WhatsApp da Samara
+          <button class="btn-whatsapp" id="whatsapp-confirm-btn" style="font-size: 16px; padding: 14px 20px;">
+            <span class="wa-icon">💬</span> Enviar Pedido no WhatsApp da Samara
           </button>
-          <button class="btn-calendar" id="calendar-add-btn">
-            <span class="cal-icon">📅</span> Adicionar ao meu Google Agenda
-          </button>
-          <button class="btn-close-modal" id="close-modal-btn">Concluir e Voltar</button>
+          <button class="btn-close-modal" id="close-modal-btn">Concluir e Fechar</button>
         </div>
       </div>
     </div>
@@ -596,6 +613,6 @@
 
   </div>
 
-  <script src="app.js?v=12"></script>
+  <script src="app.js?v=13"></script>
 </body>
 </html>
