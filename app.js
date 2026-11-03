@@ -1532,20 +1532,15 @@ function sendWhatsAppMessage() {
   if (!state.lastConfirmedBooking) return;
   const b = state.lastConfirmedBooking;
   const [y, m, d] = b.date.split('-');
-  const service = state.services.find(s => s.id === b.serviceId);
-  const durLabel = b.durationLabel || (service ? service.durationLabel : '');
 
-  const msg = `✨ *Olá Samara! Novo agendamento realizado no site:*%0A%0A` +
-    `👤 *Cliente:* ${encodeURIComponent(b.clientName)}%0A` +
-    `💅 *Procedimento(s):* ${encodeURIComponent(b.serviceTitle)}%0A` +
-    (durLabel ? `⏱️ *Duração:* ${encodeURIComponent(durLabel)}%0A` : '') +
-    `📅 *Data:* ${d}/${m}/${y}%0A` +
+  const msg = `Olá Samara! Gostaria de solicitar um agendamento: 🌸%0A%0A` +
+    `👤 *Meu Nome:* ${encodeURIComponent(b.clientName)}%0A` +
+    `💅 *Procedimento:* ${encodeURIComponent(b.serviceTitle)}%0A` +
+    `📅 *Data desejada:* ${d}/${m}/${y}%0A` +
     `⏰ *Horário:* ${b.time}h às ${b.endTime || ''}h%0A` +
-    `💰 *Valor:* R$ ${b.price.toFixed(2).replace('.', ',')}%0A` +
-    `📍 *Local:* ${encodeURIComponent(state.studioConfig.address || 'Rua Nossa Senhora das Graças, Santo Antônio, Cariacica')}%0A` +
-    `💳 *Pagamento:* Presencial no Studio%0A` +
+    `💰 *Valor estimado:* R$ ${Number(b.price || 0).toFixed(2).replace('.', ',')}%0A` +
     (b.notes ? `📝 *Observação:* ${encodeURIComponent(b.notes)}%0A` : '') +
-    `%0A_Aguardando sua confirmação!_`;
+    `%0APoderia confirmar se você tem essa disponibilidade para mim? 💕`;
 
   const phone = state.studioConfig.whatsapp || '5527988459016';
   const url = `https://wa.me/${phone}?text=${msg}`;
@@ -1688,12 +1683,12 @@ function createAppointmentCardDOM(item) {
       <span class="appt-status-badge ${(item.status || 'Confirmado').toLowerCase()}">${item.status}</span>
     </div>
     <div class="appt-actions">
-      <button class="appt-btn whatsapp" onclick="sendClientReminder('${item.id}')" title="Enviar lembrete pelo WhatsApp">💬 Lembrete</button>
+      <button class="appt-btn whatsapp" onclick="openAppointmentWhatsApp('${item.id}')" title="Conversar com a cliente no WhatsApp">${getWhatsAppButtonLabel(item.status)}</button>
       ${item.status === 'Aguardando' ? `
-        <button class="appt-btn confirm-action" onclick="updateAppointmentStatus('${item.id}', 'Confirmado')" title="Aceitar agendamento (Pinta de Verde na Planilha)">✓ Aceitar</button>
-        <button class="appt-btn reject-action" onclick="updateAppointmentStatus('${item.id}', 'Rejeitado')" title="Rejeitar solicitação e liberar horário (Pinta de Azul na Planilha)">✕ Rejeitar</button>
+        <button class="appt-btn confirm-action" onclick="adminAcceptAppointment('${item.id}')" title="Aceitar agendamento e enviar confirmação no WhatsApp">✓ Aceitar</button>
+        <button class="appt-btn reject-action" onclick="adminRejectAppointment('${item.id}')" title="Rejeitar solicitação, liberar vaga e avisar no WhatsApp">✕ Rejeitar</button>
       ` : item.status === 'Confirmado' ? `
-        <button class="appt-btn danger" onclick="updateAppointmentStatus('${item.id}', 'Cancelado')" title="Cancelar agendamento e liberar horário (Pinta de Vermelho na Planilha)">✕ Cancelar</button>
+        <button class="appt-btn danger" onclick="updateAppointmentStatus('${item.id}', 'Cancelado')" title="Cancelar agendamento e liberar horário">✕ Cancelar</button>
       ` : `
         <button class="appt-btn" onclick="deleteAppointment('${item.id}')">🗑️ Excluir</button>
       `}
@@ -1790,26 +1785,81 @@ function renderAdminAppointments() {
   }
 }
 
-// Enviar Lembrete no WhatsApp da Cliente
-window.sendClientReminder = function(apptId) {
+// Obter texto amigável do botão de WhatsApp por status
+function getWhatsAppButtonLabel(status) {
+  if (status === 'Confirmado') return '💬 WhatsApp';
+  if (status === 'Rejeitado') return '💬 WhatsApp (Recusa)';
+  if (status === 'Cancelado') return '💬 WhatsApp (Cancelamento)';
+  return '💬 WhatsApp';
+}
+
+// Enviar mensagem no WhatsApp adequada ao status real do agendamento
+function openAppointmentWhatsApp(apptId) {
   const item = state.appointments.find(a => a.id === apptId);
   if (!item) return;
 
-  const [y, m, d] = item.date.split('-');
-  const cleanPhone = item.clientPhone.replace(/\D/g, '');
+  const [y, m, d] = (item.date || '').split('-');
+  const cleanPhone = (item.clientPhone || '').replace(/\D/g, '');
   const phoneTarget = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+  if (!phoneTarget || phoneTarget.length < 10) {
+    showToast('⚠️ Telefone da cliente não informado ou incompleto.');
+    return;
+  }
 
-  const msg = `✨ *Olá ${item.clientName}!* Tudo bem?%0A%0A` +
-    `Passando para confirmar seu horário no *Studio Samara:*%0A` +
-    `💅 *Procedimento:* ${encodeURIComponent(item.serviceTitle)}%0A` +
-    `📅 *Data:* ${d}/${m}/${y}%0A` +
-    `⏰ *Horário:* ${item.time}h às ${item.endTime || '-'}h%0A` +
-    `💰 *Valor:* R$ ${item.price.toFixed(2).replace('.', ',')}%0A` +
-    `📍 *Local:* ${encodeURIComponent(state.studioConfig.address || 'Studio Samara')}%0A%0A` +
-    `_Nos vemos lá! Caso precise remarcar, por favor nos avise._`;
+  const priceFormatted = Number(item.price || 0).toFixed(2).replace('.', ',');
+  let msg = '';
+
+  if (item.status === 'Confirmado') {
+    msg = `Olá ${item.clientName}! Tudo bem? 🌸%0A%0A` +
+      `Seu agendamento foi *CONFIRMADO* com sucesso no *Studio Samara*! ✨%0A%0A` +
+      `💅 *Procedimento:* ${encodeURIComponent(item.serviceTitle)}%0A` +
+      `📅 *Data:* ${d}/${m}/${y}%0A` +
+      `⏰ *Horário:* ${item.time}h às ${item.endTime || '-'}h%0A` +
+      `💰 *Valor:* R$ ${priceFormatted}%0A` +
+      `📍 *Endereço:* ${encodeURIComponent(state.studioConfig.address || 'Rua Nossa Senhora das Graças, Santo Antônio, Cariacica')}%0A%0A` +
+      `Te espero com aquele cafezinho! ☕💕`;
+  } else if (item.status === 'Rejeitado') {
+    msg = `Olá ${item.clientName}! Tudo bem? 🌸%0A%0A` +
+      `Infelizmente não poderei te atender no dia ${d}/${m}/${y} às ${item.time}h para *${encodeURIComponent(item.serviceTitle)}*.%0A%0A` +
+      `Gostaria de ver outro dia ou horário para marcarmos? Me avise por aqui para eu te encaixar! 💕`;
+  } else if (item.status === 'Cancelado') {
+    msg = `Olá ${item.clientName}! Tudo bem? 🌸%0A%0A` +
+      `Passando para avisar que o seu horário no dia ${d}/${m}/${y} às ${item.time}h para *${encodeURIComponent(item.serviceTitle)}* precisou ser *CANCELADO*.%0A%0A` +
+      `Se quiser remarcar para outra data, estou à inteira disposição! 💕`;
+  } else {
+    // Aguardando
+    msg = `Olá ${item.clientName}! Tudo bem? 🌸%0A%0A` +
+      `Recebi sua solicitação para *${encodeURIComponent(item.serviceTitle)}* no dia ${d}/${m}/${y} às ${item.time}h no *Studio Samara*.%0A%0A` +
+      `Em breve te confirmo por aqui! 💕`;
+  }
 
   window.open(`https://wa.me/${phoneTarget}?text=${msg}`, '_blank');
-};
+}
+
+window.openAppointmentWhatsApp = openAppointmentWhatsApp;
+window.sendClientReminder = openAppointmentWhatsApp;
+
+// Ação de Aceitar pelo Admin (grava Confirmado e abre WhatsApp da cliente)
+async function adminAcceptAppointment(apptId) {
+  const apt = state.appointments.find(a => a.id === apptId);
+  if (!apt) return;
+
+  await updateAppointmentStatusDB(apptId, 'Confirmado');
+  openAppointmentWhatsApp(apptId);
+  showToast(`✓ Agendamento de ${apt.clientName} confirmado! WhatsApp aberto.`);
+}
+window.adminAcceptAppointment = adminAcceptAppointment;
+
+// Ação de Rejeitar pelo Admin (grava Rejeitado, libera horário e abre WhatsApp de recusa/reagendamento)
+async function adminRejectAppointment(apptId) {
+  const apt = state.appointments.find(a => a.id === apptId);
+  if (!apt) return;
+
+  await updateAppointmentStatusDB(apptId, 'Rejeitado');
+  openAppointmentWhatsApp(apptId);
+  showToast(`✕ Solicitação de ${apt.clientName} rejeitada (vaga liberada). WhatsApp aberto.`);
+}
+window.adminRejectAppointment = adminRejectAppointment;
 
 // -------------------------------------------------------------
 // GESTÃO DE SERVIÇOS & PREÇOS (ABA 2 DO ADMIN)
