@@ -113,9 +113,10 @@ const state = {
   selectedDate: null,
   selectedTimeSlot: null,
   baseTimeSlots: [
-    '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
-    '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
-    '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00'
+    '06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '09:30',
+    '10:00', '10:30', '11:00', '11:30',
+    '13:15', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
+    '17:00', '17:30'
   ],
   appointments: [],
   blockedTimes: [],
@@ -1227,8 +1228,12 @@ function renderTimeSlots() {
       return;
     }
 
-    // 2. Ultrapassa horário limite de encerramento (19:30 máximo para procedimentos longos)
-    const isTooLate = slotEndMinutes > (19 * 60 + 30);
+    // 2. Pausa de almoço obrigatória (12:00 às 13:15 - 1h15 de intervalo) e fim de expediente (18:00)
+    const lunchStartMin = 12 * 60;      // 12:00
+    const lunchEndMin = 13 * 60 + 15;   // 13:15
+    const workdayEndMin = 18 * 60;      // 18:00
+    const isLunchConflict = slotMinutes < lunchEndMin && slotEndMinutes > (lunchStartMin + 10);
+    const isTooLate = slotEndMinutes > (workdayEndMin + 10);
 
     // 3. Conflito com agendamentos existentes (usa endTime real do agendamento quando salvo)
     const isAppointmentConflict = dayBookings.some(booking => {
@@ -1254,7 +1259,7 @@ function renderTimeSlots() {
       return slotMinutes < bEnd && slotEndMinutes > bStart;
     });
 
-    const isBooked = isAppointmentConflict || isBlockedConflict || isTooLate;
+    const isBooked = isAppointmentConflict || isBlockedConflict || isLunchConflict || isTooLate;
     const isSelected = state.selectedTimeSlot === time;
 
     if (!isBooked) availableCount++;
@@ -1265,7 +1270,9 @@ function renderTimeSlots() {
     btn.id = `slot-${time.replace(':', '-')}`;
 
     if (isBooked) {
-      btn.title = isTooLate ? 'Tempo insuficiente antes do fechamento' : 'Horário indisponível';
+      btn.title = isLunchConflict
+        ? 'Ultrapassa o horário de almoço (12:00 às 13:15)'
+        : (isTooLate ? 'Tempo insuficiente antes do fechamento (18:00)' : 'Horário indisponível');
       btn.disabled = true;
     } else {
       btn.addEventListener('click', () => {
@@ -1940,7 +1947,7 @@ function renderAdminBlocks() {
 
   state.blockedTimes.forEach(block => {
     const [y, m, d] = block.block_date.split('-');
-    const timeText = block.start_time ? `${block.start_time.slice(0,5)} às ${block.end_time ? block.end_time.slice(0,5) : '18:30'}` : 'Dia Inteiro Fechado';
+    const timeText = block.start_time ? `${block.start_time.slice(0,5)} às ${block.end_time ? block.end_time.slice(0,5) : '18:00'}` : 'Dia Inteiro Fechado';
 
     const item = document.createElement('div');
     item.className = 'block-item';
@@ -2448,9 +2455,9 @@ function setupEventListeners() {
 // -------------------------------------------------------------
 const VALID_SHEET_TIMES = [
   '06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '09:30',
-  '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30',
+  '10:00', '10:30', '11:00', '11:30', '13:15', '13:30',
   '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
-  '18:00', '18:30', '19:00', '19:30', '20:00'
+  '18:00'
 ];
 
 function getAppointmentSafeBounds(a) {
@@ -2517,7 +2524,7 @@ function updateManualModalTimeSlots() {
     if (isBlocked) {
       return `<option value="${slot}">🔒 ${slot} — Bloqueado (Pausa/Folga)</option>`;
     }
-    if (!firstFreeSlot && startMin >= 420) {
+    if (!firstFreeSlot && startMin >= 360) {
       firstFreeSlot = slot;
     }
     return `<option value="${slot}">🟢 ${slot} — Livre</option>`;
